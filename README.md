@@ -20,7 +20,7 @@ Scores card transactions for fraud **as they stream in**, flags suspicious ones 
 flowchart LR
     P["Transaction producer<br/>(simulator)"] -->|"PutRecords, key = user_id"| K[("Kinesis<br/>Data Stream")]
     K -->|"batches of 100, bisect on error"| L["Scoring Lambda"]
-    L <-->|"per-user state, optimistic locking"| S[("DynamoDB<br/>UserState")]
+    L -->|"read + write user state"| S[("DynamoDB<br/>UserState")]
     L -->|"conditional put on txn_id"| A[("DynamoDB<br/>Alerts")]
     A -.->|"new alert only"| N["SNS<br/>email / SMS"]
     A -.->|"new alert only"| W["API Gateway<br/>WebSocket"]
