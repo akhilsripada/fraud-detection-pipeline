@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+ml/.cache/
+infra/cdk.out/
+.DS_Store
+*.log

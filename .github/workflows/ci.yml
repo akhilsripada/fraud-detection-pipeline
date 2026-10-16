@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests (no third-party dependencies needed)
+        run: python -m unittest discover -s tests -v
+      - name: Benchmark smoke test
+        run: python loadtest/bench.py --events 20000
+
+  cdk-synth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install CDK
+        run: |
+          npm install -g aws-cdk
+          pip install -r infra/requirements.txt
+      - name: Synthesize CloudFormation
+        working-directory: infra
+        run: cdk synth --quiet

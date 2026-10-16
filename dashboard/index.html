@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fraud Monitor</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #14171c; --muted: #646c78; --line: #e3e6ea;
+    --accent: #2453d6; --block: #c62f2f; --block-bg: #fde9e9; --review: #a86400;
+    --review-bg: #fff3dc; --ok: #1d7a46; --ok-bg: #e2f5ea; --grid: #eceef1; --land: #dfe3e8;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --panel: #171b21; --ink: #e8ebef; --muted: #8d96a3; --line: #262c34;
+      --accent: #7aa2ff; --block: #ff6b6b; --block-bg: #3a1c1f; --review: #f0b347;
+      --review-bg: #3a2c12; --ok: #57c98a; --ok-bg: #15301f; --grid: #1f242b; --land: #262c35;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+           padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  h1 { font-size: 16px; margin: 0; letter-spacing: -0.01em; }
+  .pill { font-size: 12px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line);
+          color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .live .dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+  .spacer { flex: 1; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  main { padding: 16px 20px 32px; display: grid; gap: 14px; max-width: 1400px; margin: 0 auto; }
+  .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+  .kpi, .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .kpi { padding: 12px 14px; }
+  .kpi .label { color: var(--muted); font-size: 12px; }
+  .kpi .value { font-size: 24px; font-weight: 600; letter-spacing: -0.02em;
+                font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .kpi .sub { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .row { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
+  .panel { padding: 12px 14px; min-width: 0; }
+  .panel h2 { font-size: 13px; margin: 0 0 8px; font-weight: 600; display: flex;
+              align-items: center; gap: 8px; }
+  .panel h2 .hint { font-weight: 400; color: var(--muted); }
+  canvas { width: 100%; display: block; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px;
+              vertical-align: middle; margin-right: 5px; }
+  .attacks { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 7px; cursor: pointer;
+           border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px;
+       padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr.new td { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--accent) 14%, transparent); } }
+  .badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 5px; }
+  .BLOCK { color: var(--block); background: var(--block-bg); }
+  .REVIEW { color: var(--review); background: var(--review-bg); }
+  .truth-fraud { color: var(--block); } .truth-legit { color: var(--ok); }
+  .reasons { color: var(--muted); font-size: 12px; }
+  .feed { max-height: 460px; overflow: auto; }
+  .num { text-align: right; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+           background: var(--ink); color: var(--panel); padding: 8px 14px; border-radius: 8px;
+           font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .empty { color: var(--muted); padding: 18px 8px; text-align: center; }
+  @media (max-width: 1000px) {
+    .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .row { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Fraud Monitor</h1>
+  <span id="conn" class="pill"><span class="dot"></span><span id="connText">connecting</span></span>
+  <span id="mode" class="pill"></span>
+  <span class="spacer"></span>
+  <span class="mono" id="modelVersion" style="color:var(--muted)"></span>
+</header>
+
+<main>
+  <section class="kpis">
+    <div class="kpi"><div class="label">Throughput</div><div class="value" id="kTps">–</div><div class="sub">txns / sec</div></div>
+    <div class="kpi"><div class="label">Latency p99</div><div class="value" id="kP99">–</div><div class="sub" id="kP50">p50 –</div></div>
+    <div class="kpi"><div class="label">Flagged</div><div class="value" id="kFlagged">–</div><div class="sub" id="kProcessed">of – scored</div></div>
+    <div class="kpi"><div class="label">Auto-blocked</div><div class="value" id="kBlocked">–</div><div class="sub">BLOCK decisions</div></div>
+    <div class="kpi"><div class="label">Live precision</div><div class="value" id="kPrec">–</div><div class="sub">flags that were fraud</div></div>
+    <div class="kpi"><div class="label">Live recall</div><div class="value" id="kRec">–</div><div class="sub">fraud that was flagged</div></div>
+  </section>
+
+  <section class="row">
+    <div class="panel">
+      <h2>Stream <span class="hint">last 2 minutes</span></h2>
+      <canvas id="chart" height="190"></canvas>
+      <div class="legend"><span><i style="background:var(--accent)"></i>txns/sec</span>
+        <span><i style="background:var(--block)"></i>flagged/sec (×10)</span></div>
+    </div>
+    <div class="panel">
+      <h2>Where alerts happen <span class="hint">lines join a user's last known spot</span></h2>
+      <canvas id="map" height="190"></canvas>
+      <div class="legend"><span><i style="background:var(--block)"></i>BLOCK</span>
+        <span><i style="background:var(--review)"></i>REVIEW</span></div>
+    </div>
+  </section>
+
+  <section class="panel" id="attackPanel">
+    <h2>Inject an attack <span class="hint">watch it get caught in the feed below</span></h2>
+    <div class="attacks">
+      <button data-attack="card_testing">Card testing</button>
+      <button data-attack="impossible_travel">Impossible travel</button>
+      <button data-attack="amount_spike">Amount spike</button>
+      <button data-attack="account_takeover">Account takeover</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Live alerts <span class="hint" id="feedCount"></span></h2>
+    <div class="feed">
+      <table>
+        <thead><tr><th>Time</th><th>Decision</th><th class="num">Risk</th><th class="num">Amount</th>
+          <th>User</th><th class="hide-sm">Location</th><th class="hide-sm">Category</th>
+          <th>Reasons</th><th class="hide-sm">Ground truth</th></tr></thead>
+        <tbody id="feed"><tr><td colspan="9" class="empty">Waiting for alerts…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const params = new URLSearchParams(location.search);
+  const wsUrl = params.get("ws");               // AWS mode: ?ws=wss://xxxx.execute-api...
+  const MAX_ROWS = 200, HISTORY = 120;
+
+  const series = [];                             // [{t, tps, flagged}]
+  const mapPoints = [];                          // recent alerts for the map
+  const lastSeen = new Map();                    // user -> {lat, lon}
+  let rows = 0, prevFlagged = null;
+  // AWS mode aggregates per-batch stats into running totals
+  const agg = { processed: 0, flagged: 0, blocked: 0, tp: 0, fp: 0, fn: 0, win: [] };
+
+  $("mode").textContent = wsUrl ? "AWS · WebSocket" : "Local · SSE";
+  if (wsUrl) $("attackPanel").style.display = "none";
+
+  // ---------------------------------------------------------------- connection
+  function setConn(ok, text) {
+    $("conn").classList.toggle("live", ok);
+    $("connText").textContent = text;
+  }
+  function connect() {
+    if (wsUrl) {
+      const ws = new WebSocket(wsUrl);
+      ws.onopen = () => setConn(true, "live");
+      ws.onclose = () => { setConn(false, "reconnecting"); setTimeout(connect, 2000); };
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        (msg.type === "batch" ? msg.items : [msg]).forEach(handle);
+      };
+    } else {
+      const es = new EventSource("/events");
+      es.onopen = () => setConn(true, "live");
+      es.onerror = () => setConn(false, "reconnecting");
+      es.onmessage = (e) => handle(JSON.parse(e.data));
+    }
+  }
+
+  function handle(msg) {
+    if (msg.type === "alert") addAlert(msg);
+    else if (msg.type === "stats") wsUrl ? onBatchStats(msg) : onStats(msg);
+    else if (msg.type === "info") toast(msg.message);
+  }
+
+  // ---------------------------------------------------------------- stats
+  const fmtPct = (x) => x == null ? "–" : (x * 100).toFixed(1) + "%";
+  const fmtMs = (x) => x == null ? "–" : (x < 1 ? x.toFixed(2) : x < 100 ? x.toFixed(1) : Math.round(x)) + " ms";
+  const fmtInt = (x) => x == null ? "–" : x.toLocaleString();
+
+  function onStats(s) {
+    $("kTps").textContent = s.tps.toFixed(1);
+    $("kP99").textContent = fmtMs(s.p99_ms);
+    $("kP50").textContent = "p50 " + fmtMs(s.p50_ms);
+    $("kFlagged").textContent = fmtInt(s.flagged);
+    $("kProcessed").textContent = "of " + fmtInt(s.processed) + " scored";
+    $("kBlocked").textContent = fmtInt(s.blocked);
+    $("kPrec").textContent = fmtPct(s.precision);
+    $("kRec").textContent = fmtPct(s.recall);
+    if (s.model_version) $("modelVersion").textContent = "model " + s.model_version;
+    const fps = prevFlagged == null ? 0 : Math.max(0, s.flagged - prevFlagged);
+    prevFlagged = s.flagged;
+    series.push({ t: s.ts, tps: s.tps, flagged: fps });
+    while (series.length > HISTORY) series.shift();
+    drawChart();
+  }
+
+  function onBatchStats(b) {   // one message per Lambda batch
+    const now = Date.now() / 1000;
+    ["processed", "flagged", "blocked"].forEach((k) => agg[k] += b[k] || 0);
+    agg.win.push({ t: now, n: b.processed || 0, f: b.flagged || 0 });
+    agg.win = agg.win.filter((w) => now - w.t <= 10);
+    agg.p50 = b.p50_ms; agg.p99 = b.p99_ms;
+  }
+  if (wsUrl) setInterval(() => {   // AWS mode: roll batch stats into the same view each second
+    const n = agg.win.reduce((a, w) => a + w.n, 0), f = agg.win.reduce((a, w) => a + w.f, 0);
+    $("kTps").textContent = (n / 10).toFixed(1);
+    $("kP99").textContent = fmtMs(agg.p99); $("kP50").textContent = "p50 " + fmtMs(agg.p50) + " end-to-end";
+    $("kFlagged").textContent = fmtInt(agg.flagged);
+    $("kProcessed").textContent = "of " + fmtInt(agg.processed) + " scored";
+    $("kBlocked").textContent = fmtInt(agg.blocked);
+    const p = agg.tp + agg.fp ? agg.tp / (agg.tp + agg.fp) : null;
+    $("kPrec").textContent = fmtPct(p); $("kRec").textContent = "–";
+    series.push({ t: Date.now() / 1000, tps: n / 10, flagged: f / 10 });
+    while (series.length > HISTORY) series.shift();
+    drawChart();
+  }, 1000);
+
+  // ---------------------------------------------------------------- feed
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function addAlert(a) {
+    if (wsUrl) { if (a.label === 1) agg.tp++; else if (a.label === 0) agg.fp++; }
+    const tbody = $("feed");
+    if (rows === 0) tbody.innerHTML = "";
+    const prev = lastSeen.get(a.user_id);
+    mapPoints.push({ ...a, prev, born: performance.now() });
+    while (mapPoints.length > 150) mapPoints.shift();
+    lastSeen.set(a.user_id, { lat: a.lat, lon: a.lon });
+
+    const truth = a.label == null ? "–" : a.label === 1
+      ? `<span class="truth-fraud">${esc(a.fraud_type || "fraud")}</span>`
+      : `<span class="truth-legit">legit</span>`;
+    const tr = document.createElement("tr");
+    tr.className = "new";
+    tr.innerHTML = `
+      <td class="mono">${new Date(a.ts * 1000).toLocaleTimeString()}</td>
+      <td><span class="badge ${esc(a.decision)}">${esc(a.decision)}</span></td>
+      <td class="num mono">${(a.risk_score * 100).toFixed(0)}</td>
+      <td class="num">$${Number(a.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      <td class="mono">${esc(a.user_id)}</td>
+      <td class="hide-sm">${esc(a.city)}, ${esc(a.country)}</td>
+      <td class="hide-sm">${esc(a.merchant_category).replace("_", " ")}</td>
+      <td class="reasons">${(a.rules_fired || []).map(esc).join(", ") || "model"}</td>
+      <td class="hide-sm">${truth}</td>`;
+    tbody.prepend(tr);
+    rows++;
+    while (tbody.rows.length > MAX_ROWS) tbody.deleteRow(-1);
+    $("feedCount").textContent = `${rows.toLocaleString()} received`;
+  }
+
+  // ---------------------------------------------------------------- canvas helpers
+  function setup(canvas) {
+    const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return [ctx, w, h];
+  }
+
+  function drawChart() {
+    const [ctx, w, h] = setup($("chart"));
+    const pad = { l: 34, r: 8, t: 8, b: 18 };
+    const maxY = Math.max(5, ...series.map((s) => Math.max(s.tps, s.flagged * 10))) * 1.15;
+    ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--muted");
+    ctx.font = "11px -apple-system, sans-serif"; ctx.lineWidth = 1;
+    for (let i = 0; i <= 3; i++) {
+      const y = pad.t + (h - pad.t - pad.b) * i / 3;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+      ctx.fillText(Math.round(maxY * (1 - i / 3)), 4, y + 4);
+    }
+    ctx.fillText("now", w - pad.r - 22, h - 4); ctx.fillText("-2m", pad.l, h - 4);
+    const x = (i) => pad.l + (w - pad.l - pad.r) * (i + HISTORY - series.length) / (HISTORY - 1);
+    const y = (v) => h - pad.b - (h - pad.t - pad.b) * v / maxY;
+    const line = (key, color, mult) => {
+      if (series.length < 2) return;
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.beginPath();
+      series.forEach((s, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, x(i), y(s[key] * mult)));
+      ctx.stroke();
+    };
+    line("tps", css("--accent"), 1);
+    line("flagged", css("--block"), 10);
+  }
+
+  function drawMap() {
+    const [ctx, w, h] = setup($("map"));
+    const px = (lon) => (lon + 180) / 360 * w;
+    const py = (lat) => (85 - lat) / 145 * h;      // crop to 85N..60S
+    ctx.strokeStyle = css("--grid"); ctx.lineWidth = 1;
+    for (let lon = -150; lon <= 150; lon += 30) { ctx.beginPath(); ctx.moveTo(px(lon), 0); ctx.lineTo(px(lon), h); ctx.stroke(); }
+    for (let lat = -60; lat <= 80; lat += 20) { ctx.beginPath(); ctx.moveTo(0, py(lat)); ctx.lineTo(w, py(lat)); ctx.stroke(); }
+    ctx.fillStyle = css("--land");
+    CITY_DOTS.forEach(([lat, lon]) => { ctx.beginPath(); ctx.arc(px(lon), py(lat), 2.5, 0, 7); ctx.fill(); });
+    const now = performance.now();
+    mapPoints.forEach((p) => {
+      const age = (now - p.born) / 1000, alpha = Math.max(0.12, 1 - age / 60);
+      const color = p.decision === "BLOCK" ? css("--block") : css("--review");
+      ctx.globalAlpha = alpha;
+      if (p.prev && (Math.abs(p.prev.lat - p.lat) + Math.abs(p.prev.lon - p.lon) > 5)) {
+        ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(px(p.prev.lon), py(p.prev.lat)); ctx.lineTo(px(p.lon), py(p.lat)); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      const r = 3 + Math.max(0, 6 * (1 - age / 2));   // new alerts "pop"
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(px(p.lon), py(p.lat), r, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+    requestAnimationFrame(drawMap);
+  }
+  // the simulator's cities, as faint reference dots
+  const CITY_DOTS = [[27.95,-82.46],[40.71,-74.01],[41.88,-87.63],[47.61,-122.33],[30.27,-97.74],
+    [37.77,-122.42],[33.75,-84.39],[39.74,-104.99],[43.65,-79.38],[19.43,-99.13],[51.51,-0.13],
+    [48.86,2.35],[52.52,13.40],[6.52,3.38],[19.08,72.88],[17.39,78.49],[1.35,103.82],[35.68,139.69],
+    [-33.87,151.21],[-23.55,-46.63],[55.76,37.62],[44.43,26.10]];
+
+  // ---------------------------------------------------------------- attacks
+  document.querySelectorAll("[data-attack]").forEach((b) => b.addEventListener("click", async () => {
+    const r = await fetch("/api/attack?type=" + b.dataset.attack, { method: "POST" });
+    if (!r.ok) toast("Could not inject attack");
+  }));
+  let toastTimer;
+  function toast(text) {
+    const t = $("toast"); t.textContent = text; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+  }
+
+  window.addEventListener("resize", drawChart);
+  connect(); drawChart(); requestAnimationFrame(drawMap);
+})();
+</script>
+</body>
+</html>

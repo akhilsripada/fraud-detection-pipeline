@@ -1,0 +1,45 @@
+name: Deploy
+
+# Manual deploy using GitHub OIDC (no long-lived AWS keys in the repo).
+# Setup: create an IAM role that trusts token.actions.githubusercontent.com for
+# this repo and can run `cdk deploy`, then add its ARN as the repository
+# secret AWS_DEPLOY_ROLE_ARN.
+on:
+  workflow_dispatch:
+    inputs:
+      alert_email:
+        description: "Email for fraud alerts (optional)"
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: python -m unittest discover -s tests
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Deploy
+        working-directory: infra
+        env:
+          ALERT_EMAIL: ${{ inputs.alert_email }}  # via env, never interpolated into the script
+        run: |
+          npm install -g aws-cdk
+          pip install -r requirements.txt
+          if [ -n "$ALERT_EMAIL" ]; then
+            cdk deploy --require-approval never -c alertEmail="$ALERT_EMAIL"
+          else
+            cdk deploy --require-approval never
+          fi

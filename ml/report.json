@@ -1,0 +1,152 @@
+{
+  "model_version": "gbm-20261016-153647",
+  "events": 600000,
+  "train_events": 420000,
+  "test_events": 180000,
+  "fraud_rate": 0.00899,
+  "thresholds": {
+    "review": 0.26,
+    "block": 0.31
+  },
+  "test_metrics": {
+    "gbm_roc_auc": 0.9984,
+    "gbm_pr_auc": 0.9376,
+    "baseline_lr_pr_auc": 0.802,
+    "any_rule_fired": {
+      "precision": 0.2421,
+      "recall": 0.6632,
+      "f1": 0.3547,
+      "tp": 1217,
+      "fp": 3810,
+      "fn": 618
+    },
+    "baseline_lr@0.5": {
+      "precision": 0.3232,
+      "recall": 0.9553,
+      "f1": 0.483,
+      "tp": 1753,
+      "fp": 3671,
+      "fn": 82
+    },
+    "gbm@review_threshold": {
+      "precision": 0.9418,
+      "recall": 0.8725,
+      "f1": 0.9058,
+      "tp": 1601,
+      "fp": 99,
+      "fn": 234
+    },
+    "system_flagged": {
+      "precision": 0.9397,
+      "recall": 0.8752,
+      "f1": 0.9063,
+      "tp": 1606,
+      "fp": 103,
+      "fn": 229
+    },
+    "system_blocked": {
+      "precision": 0.9497,
+      "recall": 0.8643,
+      "f1": 0.905,
+      "tp": 1586,
+      "fp": 84,
+      "fn": 249
+    }
+  },
+  "rules": {
+    "high_velocity_1m": {
+      "precision": 0.0798,
+      "recall": 0.0338,
+      "f1": 0.0475,
+      "tp": 62,
+      "fp": 715,
+      "fn": 1773,
+      "action": "tag"
+    },
+    "card_testing": {
+      "precision": 0.1692,
+      "recall": 0.3074,
+      "f1": 0.2183,
+      "tp": 564,
+      "fp": 2769,
+      "fn": 1271,
+      "action": "tag"
+    },
+    "impossible_travel": {
+      "precision": 0.9868,
+      "recall": 0.2452,
+      "f1": 0.3928,
+      "tp": 450,
+      "fp": 6,
+      "fn": 1385,
+      "action": "block"
+    },
+    "amount_spike": {
+      "precision": 0.5226,
+      "recall": 0.0757,
+      "f1": 0.1323,
+      "tp": 139,
+      "fp": 127,
+      "fn": 1696,
+      "action": "tag"
+    },
+    "new_device_new_country": {
+      "precision": 1.0,
+      "recall": 0.0981,
+      "f1": 0.1787,
+      "tp": 180,
+      "fp": 0,
+      "fn": 1655,
+      "action": "block"
+    },
+    "risky_category_high_amount": {
+      "precision": 0.5068,
+      "recall": 0.1635,
+      "f1": 0.2472,
+      "tp": 300,
+      "fp": 292,
+      "fn": 1535,
+      "action": "tag"
+    }
+  },
+  "flagged_recall_by_fraud_type": {
+    "account_takeover": {
+      "caught": 372,
+      "total": 374,
+      "recall": 0.9947
+    },
+    "amount_spike": {
+      "caught": 138,
+      "total": 190,
+      "recall": 0.7263
+    },
+    "card_testing": {
+      "caught": 1023,
+      "total": 1198,
+      "recall": 0.8539
+    },
+    "impossible_travel": {
+      "caught": 73,
+      "total": 73,
+      "recall": 1.0
+    }
+  },
+  "false_positive_rate": 0.000578,
+  "feature_importance": {
+    "is_new_device": 0.4671,
+    "category_risk": 0.1951,
+    "log_amount_ratio": 0.1159,
+    "log_amount": 0.09,
+    "amount_zscore": 0.0313,
+    "log_km_from_last": 0.0234,
+    "log_seconds_since_last": 0.0228,
+    "log_speed_kmh": 0.0217,
+    "log_velocity_1h": 0.0131,
+    "velocity_10m": 0.0095,
+    "velocity_1m": 0.0071,
+    "has_history": 0.0029,
+    "is_new_country": 0.0,
+    "is_foreign": 0.0,
+    "is_micro_amount": 0.0
+  }
+}

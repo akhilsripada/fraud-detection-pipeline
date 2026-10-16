@@ -1,0 +1,108 @@
+{
+  "_comment": "Every rule that fires is attached to the decision as a reason code. 'action' (tag|review|block) lets a rule escalate the model's decision; only rules with high measured precision on held-out data get one (see ml/report.md). Edit config, redeploy, no retraining.",
+  "rules": [
+    {
+      "name": "high_velocity_1m",
+      "description": "5+ transactions from one user inside a minute",
+      "when": [
+        {
+          "feature": "velocity_1m",
+          "op": ">=",
+          "value": 5
+        }
+      ],
+      "score": 45,
+      "action": "tag"
+    },
+    {
+      "name": "card_testing",
+      "description": "Burst of micro-charges, the classic stolen-card check",
+      "when": [
+        {
+          "feature": "velocity_10m",
+          "op": ">=",
+          "value": 3
+        },
+        {
+          "feature": "amount",
+          "op": "<",
+          "value": 5
+        }
+      ],
+      "score": 50,
+      "action": "tag"
+    },
+    {
+      "name": "impossible_travel",
+      "description": "Faster than a commercial jet since the last purchase",
+      "when": [
+        {
+          "feature": "speed_kmh",
+          "op": ">",
+          "value": 900
+        },
+        {
+          "feature": "km_from_last",
+          "op": ">",
+          "value": 500
+        }
+      ],
+      "score": 70,
+      "action": "block"
+    },
+    {
+      "name": "amount_spike",
+      "description": "Far above this user's normal spend",
+      "when": [
+        {
+          "feature": "amount_ratio",
+          "op": ">",
+          "value": 12
+        },
+        {
+          "feature": "has_history",
+          "op": "==",
+          "value": 1
+        }
+      ],
+      "score": 45,
+      "action": "tag"
+    },
+    {
+      "name": "new_device_new_country",
+      "description": "Account-takeover signature",
+      "when": [
+        {
+          "feature": "is_new_device",
+          "op": "==",
+          "value": 1
+        },
+        {
+          "feature": "is_new_country",
+          "op": "==",
+          "value": 1
+        }
+      ],
+      "score": 50,
+      "action": "block"
+    },
+    {
+      "name": "risky_category_high_amount",
+      "description": "Large purchase in a category fraudsters can resell",
+      "when": [
+        {
+          "feature": "category_risk",
+          "op": ">=",
+          "value": 0.7
+        },
+        {
+          "feature": "amount_ratio",
+          "op": ">",
+          "value": 4
+        }
+      ],
+      "score": 20,
+      "action": "tag"
+    }
+  ]
+}
