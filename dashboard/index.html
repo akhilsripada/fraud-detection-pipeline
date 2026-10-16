@@ -8,14 +8,14 @@
   :root {
     --bg: #f6f7f9; --panel: #ffffff; --ink: #14171c; --muted: #646c78; --line: #e3e6ea;
     --accent: #2453d6; --block: #c62f2f; --block-bg: #fde9e9; --review: #a86400;
-    --review-bg: #fff3dc; --ok: #1d7a46; --ok-bg: #e2f5ea; --grid: #eceef1; --land: #dfe3e8;
+    --review-bg: #fff3dc; --ok: #1d7a46; --ok-bg: #e2f5ea; --grid: #eef0f3; --land: #e6eaef; --land-edge: #cfd6df; --city: #6f7a88;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0f1216; --panel: #171b21; --ink: #e8ebef; --muted: #8d96a3; --line: #262c34;
       --accent: #7aa2ff; --block: #ff6b6b; --block-bg: #3a1c1f; --review: #f0b347;
-      --review-bg: #3a2c12; --ok: #57c98a; --ok-bg: #15301f; --grid: #1f242b; --land: #262c35;
+      --review-bg: #3a2c12; --ok: #57c98a; --ok-bg: #15301f; --grid: #1b2027; --land: #1f262f; --land-edge: #303a46; --city: #8a95a3;
     }
   }
   * { box-sizing: border-box; }
@@ -43,7 +43,8 @@
   .panel h2 { font-size: 13px; margin: 0 0 8px; font-weight: 600; display: flex;
               align-items: center; gap: 8px; }
   .panel h2 .hint { font-weight: 400; color: var(--muted); }
-  canvas { width: 100%; display: block; }
+  canvas { width: 100%; display: block; height: 240px; }
+  canvas.map { height: 240px; }
   .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
   .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px;
               vertical-align: middle; margin-right: 5px; }
@@ -102,15 +103,16 @@
   <section class="row">
     <div class="panel">
       <h2>Stream <span class="hint">last 2 minutes</span></h2>
-      <canvas id="chart" height="190"></canvas>
+      <canvas id="chart"></canvas>
       <div class="legend"><span><i style="background:var(--accent)"></i>txns/sec</span>
         <span><i style="background:var(--block)"></i>flagged/sec (×10)</span></div>
     </div>
     <div class="panel">
       <h2>Where alerts happen <span class="hint">lines join a user's last known spot</span></h2>
-      <canvas id="map" height="190"></canvas>
+      <canvas id="map" class="map"></canvas>
       <div class="legend"><span><i style="background:var(--block)"></i>BLOCK</span>
-        <span><i style="background:var(--review)"></i>REVIEW</span></div>
+        <span><i style="background:var(--review)"></i>REVIEW</span>
+        <span><i style="background:var(--city)"></i>simulated cities</span></div>
     </div>
   </section>
 
@@ -293,15 +295,78 @@
     line("flagged", css("--block"), 10);
   }
 
+  // ---------------------------------------------------------------- world map
+  // Simplified continent outlines as [lon, lat] rings: deliberately low-poly,
+  // just enough to make the map readable without loading any map library.
+  const LAND = [
+    // North America
+    [[-165,65],[-160,71],[-140,70],[-125,70],[-110,73],[-95,72],[-82,73],[-70,67],[-62,60],[-56,52],[-64,47],[-70,43],[-74,40],[-76,35],[-81,31],[-80,25],[-82,28],[-85,30],[-90,29],[-94,29],[-97,26],[-97,21],[-95,19],[-91,19],[-87,21],[-88,16],[-84,15],[-83,10],[-79,9],[-77,8],[-80,7],[-83,8],[-86,12],[-92,15],[-96,16],[-105,20],[-106,23],[-110,23],[-112,29],[-115,32],[-117,32],[-120,34],[-123,38],[-124,42],[-124,48],[-128,51],[-134,57],[-140,60],[-150,61],[-155,58],[-162,58],[-165,62]],
+    // Greenland
+    [[-55,60],[-45,60],[-40,65],[-22,70],[-20,77],[-30,83],[-55,82],[-70,78],[-60,76],[-55,70]],
+    // South America
+    [[-77,8],[-72,12],[-63,11],[-55,6],[-50,2],[-48,-1],[-40,-3],[-35,-6],[-35,-9],[-39,-14],[-40,-22],[-48,-26],[-53,-33],[-58,-38],[-62,-40],[-65,-45],[-68,-50],[-69,-55],[-74,-53],[-75,-45],[-73,-37],[-71,-30],[-70,-18],[-76,-14],[-81,-6],[-80,-1],[-78,2],[-78,7]],
+    // Eurasia
+    [[-9,43],[-9,39],[-6,36],[-2,37],[0,39],[3,43],[8,44],[12,42],[16,38],[18,40],[13,45],[19,42],[22,37],[26,40],[29,41],[36,36],[35,33],[34,28],[39,20],[43,13],[45,13],[52,16],[57,19],[59,22],[56,26],[51,24],[48,29],[52,27],[57,25],[62,25],[67,24],[70,21],[73,17],[77,8],[80,13],[80,16],[87,21],[92,22],[94,17],[98,16],[98,8],[101,3],[104,1],[100,7],[101,13],[105,9],[109,12],[108,17],[106,20],[110,21],[117,23],[121,29],[122,31],[119,35],[122,37],[118,39],[122,40],[125,40],[127,35],[129,35],[130,42],[135,44],[141,48],[140,54],[136,55],[143,59],[155,59],[163,62],[178,65],[180,69],[160,70],[140,72],[120,73],[105,78],[95,76],[80,73],[70,73],[60,70],[45,68],[40,66],[33,70],[25,71],[15,68],[5,62],[5,58],[10,59],[11,55],[8,57],[8,54],[5,53],[2,51],[-2,48],[-5,48],[-1,45],[-2,43]],
+    // Great Britain
+    [[-5,50],[1,51],[2,53],[0,54],[-2,56],[-3,58],[-5,58],[-6,56],[-3,54],[-4,53],[-5,52]],
+    // Africa
+    [[-17,15],[-17,21],[-13,27],[-10,30],[-6,36],[0,36],[10,37],[11,33],[20,31],[25,32],[32,31],[34,28],[39,21],[43,12],[51,12],[51,10],[48,5],[41,-1],[39,-5],[40,-11],[40,-16],[35,-20],[35,-24],[33,-27],[31,-30],[27,-34],[20,-35],[18,-32],[15,-27],[12,-18],[13,-12],[12,-5],[9,-1],[9,4],[5,5],[-2,5],[-8,4],[-13,8],[-17,13]],
+    // Madagascar
+    [[44,-25],[47,-25],[50,-15],[49,-12],[44,-17]],
+    // Japan
+    [[130,31],[132,34],[135,34],[140,35],[141,38],[142,41],[140,41],[140,38],[136,37],[132,35]],
+    // Sumatra, Borneo, Java, New Guinea
+    [[95,5],[98,4],[106,-6],[104,-6],[100,-2]],
+    [[109,1],[111,-3],[116,-4],[119,1],[117,7],[113,3]],
+    [[105,-6],[114,-7],[114,-8],[106,-7]],
+    [[131,-1],[141,-3],[150,-10],[143,-9],[138,-8]],
+    // Australia, New Zealand
+    [[114,-22],[114,-34],[118,-35],[124,-33],[131,-31],[136,-35],[138,-34],[140,-38],[146,-39],[150,-37],[153,-32],[153,-25],[146,-19],[145,-15],[142,-11],[141,-17],[136,-12],[131,-12],[126,-14],[122,-18]],
+    [[172,-35],[178,-38],[175,-41],[171,-44],[167,-46],[170,-42]],
+  ];
+  // The simulator's cities. Order = label priority when labels would overlap.
+  const CITIES = [
+    ["London",51.51,-0.13],["Tokyo",35.68,139.69],["Sydney",-33.87,151.21],["São Paulo",-23.55,-46.63],
+    ["Mumbai",19.08,72.88],["Lagos",6.52,3.38],["Singapore",1.35,103.82],["Moscow",55.76,37.62],
+    ["Seattle",47.61,-122.33],["New York",40.71,-74.01],["Tampa",27.95,-82.46],["Mexico City",19.43,-99.13],
+    ["San Francisco",37.77,-122.42],["Denver",39.74,-104.99],["Chicago",41.88,-87.63],["Austin",30.27,-97.74],
+    ["Atlanta",33.75,-84.39],["Toronto",43.65,-79.38],["Paris",48.86,2.35],["Berlin",52.52,13.40],
+    ["Bucharest",44.43,26.10],["Hyderabad",17.39,78.49],
+  ];
+  // Equirectangular projection, cropped to 78N..52S and 170W..180E (no empty polar bands).
+  const LON0 = -170, LON1 = 180, LAT0 = 78, LAT1 = -52;
+
   function drawMap() {
     const [ctx, w, h] = setup($("map"));
-    const px = (lon) => (lon + 180) / 360 * w;
-    const py = (lat) => (85 - lat) / 145 * h;      // crop to 85N..60S
+    const px = (lon) => (lon - LON0) / (LON1 - LON0) * w;
+    const py = (lat) => (LAT0 - lat) / (LAT0 - LAT1) * h;
+
     ctx.strokeStyle = css("--grid"); ctx.lineWidth = 1;
-    for (let lon = -150; lon <= 150; lon += 30) { ctx.beginPath(); ctx.moveTo(px(lon), 0); ctx.lineTo(px(lon), h); ctx.stroke(); }
-    for (let lat = -60; lat <= 80; lat += 20) { ctx.beginPath(); ctx.moveTo(0, py(lat)); ctx.lineTo(w, py(lat)); ctx.stroke(); }
-    ctx.fillStyle = css("--land");
-    CITY_DOTS.forEach(([lat, lon]) => { ctx.beginPath(); ctx.arc(px(lon), py(lat), 2.5, 0, 7); ctx.fill(); });
+    for (let lon = -150; lon <= 180; lon += 30) { ctx.beginPath(); ctx.moveTo(px(lon), 0); ctx.lineTo(px(lon), h); ctx.stroke(); }
+    for (let lat = -40; lat <= 60; lat += 20) { ctx.beginPath(); ctx.moveTo(0, py(lat)); ctx.lineTo(w, py(lat)); ctx.stroke(); }
+
+    ctx.fillStyle = css("--land"); ctx.strokeStyle = css("--land-edge"); ctx.lineJoin = "round";
+    LAND.forEach((ring) => {
+      ctx.beginPath();
+      ring.forEach(([lo, la], k) => (k ? ctx.lineTo(px(lo), py(la)) : ctx.moveTo(px(lo), py(la))));
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    });
+
+    // city dots, then labels placed greedily so they never overlap each other
+    ctx.fillStyle = css("--city");
+    CITIES.forEach(([, la, lo]) => { ctx.beginPath(); ctx.arc(px(lo), py(la), 2, 0, 7); ctx.fill(); });
+    ctx.font = "10px -apple-system, BlinkMacSystemFont, sans-serif"; ctx.textBaseline = "middle";
+    // every city dot is an obstacle too, so a label never sits next to the wrong dot
+    const placed = CITIES.map(([, la, lo]) => ({ x: px(lo) - 4, y: py(la) - 4, w: 8, h: 8 }));
+    const fits = (r) => r.x >= 0 && r.x + r.w <= w && r.y >= 0 && r.y + r.h <= h &&
+      placed.every((p) => r.x > p.x + p.w || r.x + r.w < p.x || r.y > p.y + p.h || r.y + r.h < p.y);
+    CITIES.forEach(([name, la, lo]) => {
+      const x = px(lo), y = py(la), tw = ctx.measureText(name).width;
+      const tries = [{ x: x + 5, y: y - 6 }, { x: x - 5 - tw, y: y - 6 }, { x: x - tw / 2, y: y - 16 }, { x: x - tw / 2, y: y + 4 }];
+      const spot = tries.map((t) => ({ ...t, w: tw, h: 12 })).find(fits);
+      if (spot) { placed.push(spot); ctx.fillText(name, spot.x, spot.y + 6); }
+    });
+
     const now = performance.now();
     mapPoints.forEach((p) => {
       const age = (now - p.born) / 1000, alpha = Math.max(0.12, 1 - age / 60);
@@ -318,11 +383,6 @@
     });
     requestAnimationFrame(drawMap);
   }
-  // the simulator's cities, as faint reference dots
-  const CITY_DOTS = [[27.95,-82.46],[40.71,-74.01],[41.88,-87.63],[47.61,-122.33],[30.27,-97.74],
-    [37.77,-122.42],[33.75,-84.39],[39.74,-104.99],[43.65,-79.38],[19.43,-99.13],[51.51,-0.13],
-    [48.86,2.35],[52.52,13.40],[6.52,3.38],[19.08,72.88],[17.39,78.49],[1.35,103.82],[35.68,139.69],
-    [-33.87,151.21],[-23.55,-46.63],[55.76,37.62],[44.43,26.10]];
 
   // ---------------------------------------------------------------- attacks
   document.querySelectorAll("[data-attack]").forEach((b) => b.addEventListener("click", async () => {
