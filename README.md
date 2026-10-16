@@ -18,16 +18,17 @@ Scores card transactions for fraud **as they stream in**, flags suspicious ones 
 
 ```mermaid
 flowchart LR
-    P[Transaction producer<br/>simulator] -->|PutRecords<br/>partition key = user_id| K[(Kinesis<br/>Data Stream)]
-    K -->|batches of 100<br/>bisect on error| L[Scoring Lambda]
-    L <-->|per-user state<br/>optimistic locking| S[(DynamoDB<br/>UserState)]
-    L -->|conditional put<br/>on txn_id| A[(DynamoDB<br/>Alerts)]
-    A -. new alert only .-> N[SNS<br/>email / SMS]
-    A -. new alert only .-> W[API Gateway<br/>WebSocket]
-    W --> D[Live dashboard]
-    L -->|every decision| F[Firehose] --> B[(S3 data lake)] --> Q[Athena]
-    L -. failed after retries .-> DLQ[(SQS DLQ)] -. replay_dlq.py .-> K
-    L --> CW[CloudWatch<br/>EMF metrics, alarms, X-Ray]
+    P["Transaction producer<br/>(simulator)"] -->|"PutRecords, key = user_id"| K[("Kinesis<br/>Data Stream")]
+    K -->|"batches of 100, bisect on error"| L["Scoring Lambda"]
+    L <-->|"per-user state, optimistic locking"| S[("DynamoDB<br/>UserState")]
+    L -->|"conditional put on txn_id"| A[("DynamoDB<br/>Alerts")]
+    A -.->|"new alert only"| N["SNS<br/>email / SMS"]
+    A -.->|"new alert only"| W["API Gateway<br/>WebSocket"]
+    W --> D["Live dashboard"]
+    L -->|"every decision"| F["Firehose"] --> B[("S3 data lake")] --> Q["Athena"]
+    L -.->|"failed after retries"| DLQ[("SQS DLQ")]
+    DLQ -.->|"replay script"| K
+    L --> CW["CloudWatch<br/>EMF metrics, alarms, X-Ray"]
 ```
 
 **How one transaction is scored**
