@@ -1,20 +1,58 @@
-# Real-Time Fraud Detection Pipeline
+# Sentinel: Real-Time Fraud Detection You Can Talk To
 
-Scores card transactions for fraud **as they stream in**, flags suspicious ones in well under a second, pushes them to a live dashboard and on-call alerts, and lands every decision in a queryable data lake. It is built on AWS (Kinesis, Lambda, DynamoDB, API Gateway WebSockets, SNS, Firehose, S3) and defined entirely in CDK.
+[![CI](https://github.com/akhilsripada/fraud-detection-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/akhilsripada/fraud-detection-pipeline/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/live%20demo-open-c93a31)](https://akhilsripada.github.io/fraud-detection-pipeline/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+Sentinel scores card transactions for fraud **as they stream in**, blocks the suspicious ones in well under a millisecond, and **explains every decision in plain English**. Ask it *"why was u01037 blocked?"* on the dashboard, from Claude or ChatGPT through its MCP server, or watch attacks land on an **AR globe** on your desk.
+
+It runs two ways from the same code: on your laptop with one command, or serverless on AWS (Kinesis, Lambda, DynamoDB, API Gateway WebSockets, SNS, Firehose, S3), defined entirely in CDK.
+
+**[Try the live demo](https://akhilsripada.github.io/fraud-detection-pipeline/)** (runs in your browser) · **[AR globe](https://akhilsripada.github.io/fraud-detection-pipeline/ar/)**
 
 | | |
 |---|---|
 | **Detection quality** (held-out data) | **94.0% precision · 87.5% recall** · 0.06% of legitimate transactions flagged |
 | **Model** | Gradient-boosted trees, PR-AUC **0.938** (vs 0.802 for a logistic-regression baseline) |
 | **Scoring cost** | **6,600+ txns/sec on one CPU core**, p99 **0.27 ms** per transaction |
+| **Assistant** | Answers in **under 1 ms** for known questions; an optional LLM only routes free-form ones |
 | **Reliability** | Exactly-once alerts on an at-least-once stream, in-order retries, DLQ with replay |
-| **Lambda dependencies** | **Zero** (model exported to JSON, inference in pure Python) |
+| **Dependencies** | **None** to run it. Python 3.11+ standard library only |
 
-> Run it on your laptop in one command with no AWS account: `python local/demo_server.py`, then open http://localhost:8000 and click **Inject an attack** to watch it get caught live.
+## Run it in one command
+
+```bash
+git clone https://github.com/akhilsripada/fraud-detection-pipeline.git
+cd fraud-detection-pipeline
+python run.py
+```
+
+Your browser opens the live dashboard at http://localhost:8000. Type *"simulate an account takeover"* in **Ask Sentinel** and watch it get caught and explained. With Docker instead: `docker compose up`.
+
+## Talk to it
+
+| Where | How |
+|---|---|
+| **Dashboard** | Type a question in **Ask Sentinel**, or click any alert to ask why it was flagged. |
+| **Claude, ChatGPT, Cursor** | Add the MCP server (below), then ask *"what fraud happened in Europe today?"* |
+| **HTTP API** | `curl -X POST localhost:8000/api/ask -d '{"text":"give me a summary"}'` |
+| **AR** | Open `/ar` on an Android phone with Chrome, tap **Start AR**, and place the globe on a table. Run `python run.py --host 0.0.0.0` so your phone can reach your laptop. iPhone Safari doesn't support WebXR AR yet, so it shows the 3D globe instead. |
+
+Questions it understands: *why was u01037 blocked?* · *why was the last transaction blocked?* · *simulate impossible travel* · *show me fraud in Asia* · *give me a summary* · *show all*. Set `GEMINI_API_KEY` (Google's free tier works) to also handle free-form questions like *"anything weird happening in the far east?"*.
+
+**MCP setup (Claude Desktop):** add this to `claude_desktop_config.json`, with Sentinel running:
+
+```json
+{"mcpServers": {"sentinel": {"command": "python3", "args": ["/full/path/to/fraud-detection-pipeline/mcp/sentinel_mcp.py"]}}}
+```
+
+Tools: `ask_sentinel`, `recent_alerts`, `fraud_stats`, `simulate_attack`. Every answer ends with a link to the live dashboard.
 
 ---
 
 ## Architecture
+
+Two deployments share one scoring core (`src/fraud_pipeline`). **Self-hosted:** `run.py` runs the pipeline, SQLite store, dashboard, assistant, HTTP API and MCP server on one machine. **AWS:** the same code runs in Lambda behind Kinesis:
 
 ```mermaid
 flowchart LR
@@ -72,6 +110,10 @@ Performance ([`loadtest/results.md`](loadtest/results.md)):
 
 ## Design decisions & trade-offs
 
+**The language model routes; the code answers.** Every explanation is assembled from the decision's own features (distance, speed, spend ratio, device history), so it can't contain a number the model didn't compute. Fast rules handle the common questions in under a millisecond for free. Only when they don't match, and a key is configured, is an LLM asked to pick one of the same fixed intents; its output is validated against an allow-list, cached, and any failure falls back gracefully. An LLM can therefore never invent a fact about a customer's transaction, and the dashboard keeps working when the LLM is down or out of quota.
+
+**SQLite for the self-hosted version.** Alerts persist across restarts with the same idempotency rule as DynamoDB (the transaction id is the primary key), counters are written once per second instead of once per transaction, and there's nothing to install. The store has a four-method interface, so swapping in PostgreSQL is a one-file change.
+
 **Simulated data instead of a public dataset.** Public fraud datasets ship anonymized PCA features, so you can't do real-time feature engineering on them. The simulator models users with stable habits and injects four labeled attack patterns (card testing, impossible travel, amount spikes, account takeover). It also injects **legitimate behavior that looks suspicious**: real trips abroad, big one-off purchases, app-store micro-purchases, and new phones. My first version scored ROC-AUC 1.0, which only meant the fraud was too easy to spot. I made the attacks subtler until the metrics became believable.
 
 **Gradient-boosted trees, exported to JSON.** GBM beat logistic regression on PR-AUC (0.938 vs 0.802). Shipping scikit-learn to Lambda would mean a large package and slow cold starts, so training exports the trees as arrays and inference is a short tree walk in pure Python. Training asserts the export matches sklearn's output to within 1e-3 before writing the model.
@@ -114,26 +156,32 @@ src/fraud_pipeline/      # deployed to Lambda as-is (no third-party deps)
   aws/ws.py              #   WebSocket $connect / $disconnect
   config/rules.json      #   rules, editable without code changes
   config/model.json      #   trained model + thresholds
+  assistant.py           #   plain-English questions -> intents -> answers from real features
+  store.py               #   SQLite alert store for the self-hosted version
 ml/train.py              # simulate -> featurize -> train -> verify export -> report
-local/demo_server.py     # whole pipeline + live dashboard, standard library only
-dashboard/index.html     # live dashboard (SSE locally, WebSocket on AWS)
+run.py                   # one-command start: server + dashboard + browser
+local/demo_server.py     # pipeline, dashboard, assistant and HTTP API, standard library only
+dashboard/index.html     # live dashboard with Ask Sentinel (SSE locally, WebSocket on AWS)
+mcp/sentinel_mcp.py      # MCP server so AI assistants can query the live stream
+ar/index.html            # three.js globe with WebXR placement on real surfaces
+site/index.html          # browser-only demo published to GitHub Pages
 infra/                   # AWS CDK app (Python)
 scripts/producer.py      # stream simulated traffic into Kinesis
 scripts/replay_dlq.py    # re-drive failed records from the DLQ
 loadtest/bench.py        # throughput / latency benchmark
-tests/                   # 35 unit tests, AWS services faked in memory
+tests/                   # 53 tests: unit, AWS fakes, live server + MCP end to end
 docs/                    # Athena queries
 ```
 
 ---
 
-## Run it locally (no AWS)
+## Development
 
 Requires Python 3.11+. The pipeline itself uses only the standard library.
 
 ```bash
-python local/demo_server.py          # http://localhost:8000
-python -m unittest discover -s tests # 35 tests, < 1 second
+python run.py                        # http://localhost:8000
+python -m unittest discover -s tests # 53 tests, a few seconds
 python loadtest/bench.py             # benchmark
 ```
 

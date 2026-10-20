@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sentinel · Live demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a lab bench. Name strip, three project tabs, then per project: command bar, AI reply, live stage + side instruments. */
+  :root {
+    --bg: #eef1f4; --panel: #ffffff; --ink: #141920; --muted: #586270; --line: #dbe0e6; --soft: #f3f5f7;
+    --sentinel: #c93a31; --pick: #b86e00; --home: #0a7f75;
+    --ok: #1b7444; --warn: #a86400; --bad: #c22f2c;
+    --land: #dfe4ea; --land-edge: #b9c2cd; --globe: #f7f9fb; --grid: #e7ebef;
+    --floor: #f6f7f9; --rack: #d7dde4; --wall: #8a95a2; --glow: #ffb648; --cam: #11161c; --cam-ink: #e9eef3; --cam-line: #2b3540;
+    --display: "Familjen Grotesk", "Arial Narrow", system-ui, sans-serif;
+    --body: "Instrument Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --accent: var(--sentinel);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c1014; --panel: #151a20; --ink: #e6eaee; --muted: #8b95a1; --line: #252c35; --soft: #1b2129;
+      --sentinel: #ff6e64; --pick: #f2a43a; --home: #39c4b5;
+      --ok: #5fcf8f; --warn: #f2b553; --bad: #ff7570;
+      --land: #222a33; --land-edge: #3a4553; --globe: #10151a; --grid: #1d242c;
+      --floor: #12171c; --rack: #2a333d; --wall: #6d7886; --glow: #ffb648; --cam: #0b0f13; --cam-ink: #e9eef3; --cam-line: #26303a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c1014; --panel: #151a20; --ink: #e6eaee; --muted: #8b95a1; --line: #252c35; --soft: #1b2129;
+    --sentinel: #ff6e64; --pick: #f2a43a; --home: #39c4b5;
+    --ok: #5fcf8f; --warn: #f2b553; --bad: #ff7570;
+    --land: #222a33; --land-edge: #3a4553; --globe: #10151a; --grid: #1d242c;
+    --floor: #12171c; --rack: #2a333d; --wall: #6d7886; --glow: #ffb648; --cam: #0b0f13; --cam-ink: #e9eef3; --cam-line: #26303a;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+  .wrap { max-width: 1260px; margin: 0 auto; padding-block: 22px 48px;
+          padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+          display: grid; gap: 16px; }
+  .owner { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
+  h1 { font: 700 30px/1.05 var(--display); letter-spacing: -0.02em; margin: 0; }
+  .owner p { margin: 0; color: var(--muted); max-width: 62ch; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .muted { color: var(--muted); }
+
+  .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .tab { text-align: left; font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line);
+         border-radius: 10px; padding: 12px 14px; cursor: pointer; display: grid; gap: 2px; position: relative; }
+  .tab .t-name { font: 600 18px/1.2 var(--display); display: flex; align-items: center; gap: 8px; }
+  .tab .t-line { color: var(--muted); font-size: 13px; }
+  .tab i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); display: inline-block; }
+  .tab[aria-selected="true"] { border-color: var(--c); box-shadow: inset 0 -3px 0 var(--c); }
+  .tab:hover { border-color: var(--c); }
+  .tab:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .proj { display: grid; gap: 12px; }
+  .proj[data-p="sentinel"] { --accent: var(--sentinel); }
+  :root { --accent: var(--sentinel); }
+  .proj[data-p="pickpath"] { --accent: var(--pick); }
+  .proj[data-p="homemind"] { --accent: var(--home); }
+  .proj-head { display: flex; gap: 8px 16px; align-items: baseline; flex-wrap: wrap; }
+  .proj-head h2 { font: 700 24px/1.1 var(--display); margin: 0; letter-spacing: -0.01em; }
+  .proj-head p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font: 500 12px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 2px 9px; background: var(--panel); }
+
+  .cmd { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+  .cmd form { display: flex; gap: 8px; align-items: stretch; }
+  .cmd input { flex: 1; min-width: 0; font: 500 16px var(--body); color: var(--ink); background: var(--soft);
+               border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .cmd input::placeholder { color: var(--muted); }
+  .btn { font: 600 14px var(--body); border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+         padding: 8px 12px; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+  .btn.primary:hover { color: var(--panel); filter: brightness(1.06); }
+  .btn.icon { width: 44px; padding: 0; display: grid; place-items: center; }
+  .btn.icon svg { width: 18px; height: 18px; fill: currentColor; }
+  .examples { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .examples .lbl { font-size: 12px; color: var(--muted); margin-right: 2px; }
+  .ex { font: 500 13px var(--body); color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 99px;
+        padding: 4px 11px; cursor: pointer; }
+  .ex:hover { border-color: var(--accent); color: var(--accent); }
+
+  .reply { border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 10px 10px 0; padding: 12px 14px;
+           display: grid; gap: 8px; border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .reply.pop { animation: pop .45s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes pop { from { transform: translateY(6px) scale(.985); opacity: .35; } }
+  .reply .you { font-size: 13px; color: var(--muted); }
+  .reply .you b { color: var(--ink); font-weight: 600; }
+  .reply .ans { max-width: 80ch; }
+  .reply .ans p { margin: 0 0 6px; }
+  .reply .ans ul { margin: 4px 0 6px; padding-left: 18px; display: grid; gap: 3px; }
+  .reply .meta { font: 12px var(--mono); color: var(--muted); }
+  .reply .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .quote { background: var(--soft); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+
+  .stage { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; display: grid; gap: 8px; }
+  .panel h3 { font: 600 15px/1.2 var(--display); margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .panel h3 .hint { font: 400 12px var(--body); color: var(--muted); }
+  canvas { display: block; width: 100%; }
+  .c-main { height: 400px; }
+  .c-ar { height: 240px; border-radius: 8px; }
+  .c-chart { height: 130px; }
+  .side { display: grid; gap: 12px; min-width: 0; }
+
+  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .kpi { background: var(--soft); border-radius: 8px; padding: 8px 10px; }
+  .kpi .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .kpi .v { font: 700 22px/1.15 var(--display); font-variant-numeric: tabular-nums; }
+
+  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 300px; overflow: auto; }
+  .row { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center;
+         padding: 7px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .row.click { cursor: pointer; }
+  .row.click:hover { background: var(--soft); }
+  .row .sub { grid-column: 2 / -1; color: var(--muted); font-size: 12.5px; }
+  .row.new { animation: flash 1.4s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--accent) 16%, transparent); } }
+  .badge { font: 600 11px var(--body); letter-spacing: .03em; padding: 2px 7px; border-radius: 4px; justify-self: start; }
+  .b-block { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+  .b-review { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+  .b-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .b-idle { color: var(--muted); background: var(--soft); }
+  .right { text-align: right; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 0; max-width: 90ch; }
+
+  .dev { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px; border-radius: 6px; }
+  .dev .n { font-weight: 500; }
+  .dev .s { color: var(--muted); font-size: 12.5px; }
+  .dev .w { font: 12px var(--mono); color: var(--muted); text-align: right; min-width: 58px; }
+  .toggle { width: 42px; height: 24px; border-radius: 99px; border: 1px solid var(--line); background: var(--soft); position: relative; cursor: pointer; padding: 0; }
+  .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .18s, background .18s; }
+  .toggle[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); }
+  .toggle[aria-pressed="true"]::after { transform: translateX(18px); background: var(--accent); }
+  .toggle:disabled { opacity: .45; cursor: default; }
+  .full { font-size: 13px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; margin: 0; }
+  .full b { color: var(--ink); font-weight: 600; }
+
+  @media (max-width: 960px) {
+    .stage { grid-template-columns: minmax(0, 1fr); }
+    .c-main { height: 330px; }
+  }
+  @media (max-width: 640px) {
+    .tabs { grid-template-columns: minmax(0, 1fr); }
+    .tab .t-line { display: none; }
+    .cmd form { flex-wrap: wrap; }
+    .cmd input { flex-basis: 100%; }
+    .c-main { height: 290px; }
+    h1 { font-size: 26px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: 13px; background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="owner">
+    <h1>Sentinel</h1>
+    <span class="mono muted">by Akhil Sripada</span>
+    <p>Real-time fraud detection you can talk to. This live demo runs entirely in your browser. <a href="https://github.com/akhilsripada/fraud-detection-pipeline">Source code</a> · <a href="ar/">AR globe</a></p>
+  </header>
+  <!-- ===================================================================== SENTINEL -->
+  <section class="proj" id="sentinel" data-p="sentinel">
+    <div class="proj-head">
+      <p>Scores every card swipe as it happens, blocks fraud, and explains each decision in plain English.</p>
+    </div>
+    <div class="chips"><span class="chip">event streaming</span><span class="chip">fraud model + rules</span><span class="chip">LLM explanations</span><span class="chip">WebXR globe</span><span class="chip">MCP server</span></div>
+
+    <div class="cmd">
+      <form id="sentinel-form" autocomplete="off">
+        <input id="sentinel-input" type="text" placeholder="Ask Sentinel, e.g. “Why was the last transaction blocked?”" aria-label="Command for Sentinel">
+        <button class="btn icon" type="button" id="sentinel-mic" aria-label="Speak a command"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
+        <button class="btn primary" type="submit">Run</button>
+      </form>
+      <div class="examples"><span class="lbl">Try</span>
+        <button class="ex" data-cmd="sentinel">Why was the last transaction blocked?</button>
+        <button class="ex" data-cmd="sentinel">Simulate an account takeover</button>
+        <button class="ex" data-cmd="sentinel">Run a card testing attack</button>
+        <button class="ex" data-cmd="sentinel">Show me fraud in Europe</button>
+        <button class="ex" data-cmd="sentinel">Give me a summary</button>
+      </div>
+    </div>
+    <div class="reply" id="sentinel-reply" role="status" aria-live="polite"></div>
+
+    <div class="stage">
+      <div class="panel">
+        <h3>Live attack globe <span class="hint">On a phone this globe sits on your desk through the camera (WebXR). Arcs join a card's last location to the suspicious one.</span></h3>
+        <canvas id="sentinel-globe" class="c-main" aria-label="Rotating globe with live fraud alerts"></canvas>
+        <div class="legend"><span><i style="background:var(--bad)"></i>Blocked</span><span><i style="background:var(--warn)"></i>Sent for review</span><span><i style="background:var(--land-edge)"></i>Cities in the simulation</span></div>
+      </div>
+      <div class="side">
+        <div class="panel">
+          <h3>Stream <span class="hint" id="sentinel-filter">all regions</span></h3>
+          <div class="kpis">
+            <div class="kpi"><div class="l">Scored</div><div class="v" id="s-scored">0</div></div>
+            <div class="kpi"><div class="l">Flagged</div><div class="v" id="s-flagged">0</div></div>
+            <div class="kpi"><div class="l">Blocked</div><div class="v" id="s-blocked">0</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Alerts <span class="hint">tap one to ask why</span></h3>
+          <ul class="list" id="sentinel-feed"></ul>
+        </div>
+      </div>
+    </div>
+    <p class="full"><b>Full build adds:</b> the trained model from my fraud pipeline (94% precision, 87.5% recall on held-out data), a real event stream, PostgreSQL, cached LLM explanations, and an MCP server so Claude or ChatGPT can answer “why was this blocked?” directly.</p>
+  </section>
+
+  <p class="note">Browser demo with simulated cardholders. The full system in the repo runs the trained model, a live event stream, a database, an AI assistant and an MCP server. Start it with <code>python run.py</code>.</p>
+</div>
+<script>
+const LAND = [[[-165,65],[-160,71],[-140,70],[-125,70],[-110,73],[-95,72],[-82,73],[-70,67],[-62,60],[-56,52],[-64,47],[-70,43],[-74,40],[-76,35],[-81,31],[-80,25],[-82,28],[-85,30],[-90,29],[-94,29],[-97,26],[-97,21],[-95,19],[-91,19],[-87,21],[-88,16],[-84,15],[-83,10],[-79,9],[-77,8],[-80,7],[-83,8],[-86,12],[-92,15],[-96,16],[-105,20],[-106,23],[-110,23],[-112,29],[-115,32],[-117,32],[-120,34],[-123,38],[-124,42],[-124,48],[-128,51],[-134,57],[-140,60],[-150,61],[-155,58],[-162,58],[-165,62]],[[-55,60],[-45,60],[-40,65],[-22,70],[-20,77],[-30,83],[-55,82],[-70,78],[-60,76],[-55,70]],[[-77,8],[-72,12],[-63,11],[-55,6],[-50,2],[-48,-1],[-40,-3],[-35,-6],[-35,-9],[-39,-14],[-40,-22],[-48,-26],[-53,-33],[-58,-38],[-62,-40],[-65,-45],[-68,-50],[-69,-55],[-74,-53],[-75,-45],[-73,-37],[-71,-30],[-70,-18],[-76,-14],[-81,-6],[-80,-1],[-78,2],[-78,7]],[[-9,43],[-9,39],[-6,36],[-2,37],[0,39],[3,43],[8,44],[12,42],[16,38],[18,40],[13,45],[19,42],[22,37],[26,40],[29,41],[36,36],[35,33],[34,28],[39,20],[43,13],[45,13],[52,16],[57,19],[59,22],[56,26],[51,24],[48,29],[52,27],[57,25],[62,25],[67,24],[70,21],[73,17],[77,8],[80,13],[80,16],[87,21],[92,22],[94,17],[98,16],[98,8],[101,3],[104,1],[100,7],[101,13],[105,9],[109,12],[108,17],[106,20],[110,21],[117,23],[121,29],[122,31],[119,35],[122,37],[118,39],[122,40],[125,40],[127,35],[129,35],[130,42],[135,44],[141,48],[140,54],[136,55],[143,59],[155,59],[163,62],[178,65],[180,69],[160,70],[140,72],[120,73],[105,78],[95,76],[80,73],[70,73],[60,70],[45,68],[40,66],[33,70],[25,71],[15,68],[5,62],[5,58],[10,59],[11,55],[8,57],[8,54],[5,53],[2,51],[-2,48],[-5,48],[-1,45],[-2,43]],[[-5,50],[1,51],[2,53],[0,54],[-2,56],[-3,58],[-5,58],[-6,56],[-3,54],[-4,53],[-5,52]],[[-17,15],[-17,21],[-13,27],[-10,30],[-6,36],[0,36],[10,37],[11,33],[20,31],[25,32],[32,31],[34,28],[39,21],[43,12],[51,12],[51,10],[48,5],[41,-1],[39,-5],[40,-11],[40,-16],[35,-20],[35,-24],[33,-27],[31,-30],[27,-34],[20,-35],[18,-32],[15,-27],[12,-18],[13,-12],[12,-5],[9,-1],[9,4],[5,5],[-2,5],[-8,4],[-13,8],[-17,13]],[[44,-25],[47,-25],[50,-15],[49,-12],[44,-17]],[[130,31],[132,34],[135,34],[140,35],[141,38],[142,41],[140,41],[140,38],[136,37],[132,35]],[[95,5],[98,4],[106,-6],[104,-6],[100,-2]],[[109,1],[111,-3],[116,-4],[119,1],[117,7],[113,3]],[[105,-6],[114,-7],[114,-8],[106,-7]],[[131,-1],[141,-3],[150,-10],[143,-9],[138,-8]],[[114,-22],[114,-34],[118,-35],[124,-33],[131,-31],[136,-35],[138,-34],[140,-38],[146,-39],[150,-37],[153,-32],[153,-25],[146,-19],[145,-15],[142,-11],[141,-17],[136,-12],[131,-12],[126,-14],[122,-18]],[[172,-35],[178,-38],[175,-41],[171,-44],[167,-46],[170,-42]]];
+const CITIES = [["London",51.51,-0.13],["Tokyo",35.68,139.69],["Sydney",-33.87,151.21],["São Paulo",-23.55,-46.63],["Mumbai",19.08,72.88],["Lagos",6.52,3.38],["Singapore",1.35,103.82],["Moscow",55.76,37.62],["Seattle",47.61,-122.33],["New York",40.71,-74.01],["Tampa",27.95,-82.46],["Mexico City",19.43,-99.13],["San Francisco",37.77,-122.42],["Denver",39.74,-104.99],["Chicago",41.88,-87.63],["Austin",30.27,-97.74],["Atlanta",33.75,-84.39],["Toronto",43.65,-79.38],["Paris",48.86,2.35],["Berlin",52.52,13.4],["Bucharest",44.43,26.1],["Hyderabad",17.39,78.49]];
+// Plain-English command understanding for the three demos. Pure functions, no DOM.
+// Each returns an intent object; anything unrecognised returns {intent: "unknown"}.
+const NLU = (() => {
+  const norm = (t) => " " + String(t).toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9%'\-\s.]/g, " ")
+    .replace(/\s+/g, " ").trim() + " ";
+
+  // ------------------------------------------------------------------ Sentinel
+  const REGION_WORDS = [
+    ["europe", /\b(europe|european|uk|britain|london|paris|berlin|germany|france|romania|russia|moscow)\b/],
+    ["asia", /\b(asia|asian|india|mumbai|hyderabad|japan|tokyo|singapore)\b/],
+    ["africa", /\b(africa|african|nigeria|lagos)\b/],
+    ["oceania", /\b(australia|sydney|oceania)\b/],
+    ["southamerica", /\b(south america|latin america|brazil|sao paulo)\b/],
+    ["northamerica", /\b(north america|usa|us|u\.s\.|america|united states|canada|mexico|states)\b/],
+  ];
+  function attackKind(t) {
+    if (/card.?test|testing|micro|tiny|small charges/.test(t)) return "card_testing";
+    if (/travel|teleport|impossible|location|abroad/.test(t)) return "impossible_travel";
+    if (/spike|large|big|huge|expensive|high amount/.test(t)) return "amount_spike";
+    if (/takeover|\bato\b|hack|log ?in|account|stolen login/.test(t)) return "account_takeover";
+    return null;
+  }
+  function sentinel(text) {
+    const t = norm(text);
+    const user = (t.match(/\bu\d{1,5}\b/) || [])[0] || null;
+    if (/\b(simulate|inject|trigger|launch|start|run|fire|send)\b/.test(t) || /\battack\b/.test(t))
+      return { intent: "attack", kind: attackKind(t) };
+    if (/\b(why|explain|reason|what happened|tell me about)\b/.test(t) || user)
+      return { intent: "explain", user };
+    if (/\b(report|summary|summari[sz]e|today|so far|what changed|overview|how many|stats)\b/.test(t))
+      return { intent: "report" };
+    if (/\b(clear|reset|show all|everything|all regions|whole world|everywhere)\b/.test(t))
+      return { intent: "clear" };
+    for (const [region, re] of REGION_WORDS) if (re.test(t)) return { intent: "region", region };
+    return { intent: "unknown" };
+  }
+
+  // ------------------------------------------------------------------ PickPath
+  function pickpath(text) {
+    const t = norm(text);
+    const order = (t.match(/\b(\d{4})\b/) || [])[1] || null;
+    if (/\b(re-?route|rebalance|fix it|fix that|fix the|move pickers|send pickers|unblock|clear the)\b/.test(t))
+      return { intent: "reroute" };
+    if (order) return { intent: "locate", order };
+    const agent = t.match(/\b(robot|picker|r|p)[ -]?(\d{1,2})\b/);
+    if (agent) return { intent: "agent", kind: agent[1][0] === "r" ? "R" : "P", n: Number(agent[2]) };
+    if (/\b(late|delay|delayed|slow|behind|bottleneck|congest\w*|stuck|jam|why)\b/.test(t))
+      return { intent: "diagnose" };
+    if (/\b(status|summary|how many|orders|overview|report|progress)\b/.test(t))
+      return { intent: "status" };
+    if (/\b(stop|cancel|end) (navigation|guiding|route)\b/.test(t)) return { intent: "stop" };
+    return { intent: "unknown" };
+  }
+
+  // ------------------------------------------------------------------ HomeMind
+  const ROOM_WORDS = [
+    ["living", /\b(living ?room|lounge|family room|living)\b/],
+    ["kitchen", /\b(kitchen)\b/],
+    ["bedroom", /\b(bed ?room|master)\b/],
+    ["office", /\b(office|study|desk)\b/],
+    ["bath", /\b(bath ?room|bath|washroom|restroom)\b/],
+  ];
+  function homemind(text) {
+    const t = norm(text);
+    if (/\b(movie|film|cinema|netflix)\b/.test(t)) return { intent: "scene", scene: "movie" };
+    if (/\b(good ?night|bed ?time|going to sleep|sleep mode)\b/.test(t)) return { intent: "scene", scene: "night" };
+    if (/\b(leaving|away mode|going out|i'm out|im out|heading out)\b/.test(t)) return { intent: "scene", scene: "away" };
+    if (/\b(good morning|wake up|morning)\b/.test(t)) return { intent: "scene", scene: "morning" };
+    if (/\b(power|energy|electric\w*|using the most|watts?|bill|consum\w*|costing)\b/.test(t)) return { intent: "power" };
+
+    const num = (t.match(/\b(\d{1,3})\s*(%|percent|degrees|deg|f)?\b/) || []);
+    const n = num[1] != null ? Number(num[1]) : null;
+    if (/\b(thermostat|temperature|temp|degrees|warmer|cooler|colder|hotter)\b/.test(t)) {
+      if (n != null) return { intent: "thermostat", value: n };
+      if (/warmer|hotter/.test(t)) return { intent: "thermostat", delta: 2 };
+      if (/cooler|colder/.test(t)) return { intent: "thermostat", delta: -2 };
+      return { intent: "thermostat" };
+    }
+
+    let device = null;
+    if (/\b(tv|television|telly)\b/.test(t)) device = "tv";
+    else if (/\bfan\b/.test(t)) device = "fan";
+    else if (/\b(heater|heating)\b/.test(t)) device = "heater";
+    else if (/\b(light|lights|lamp|lamps|bulb)\b/.test(t) || /\b(dim|brighten|brighter|darker)\b/.test(t)) device = "light";
+
+    let room = null;
+    for (const [r, re] of ROOM_WORDS) if (re.test(t)) { room = r; break; }
+    const all = /\b(all|every|everything|whole house|entire house|house)\b/.test(t);
+    if (!device && room) device = "light";
+    if (!device && all && /\b(off|on)\b/.test(t)) device = "everything";
+
+    let action = null, level = null;
+    if (/\b(off|turn off|switch off|shut|kill)\b/.test(t)) action = "off";
+    else if (n != null && device === "light") { action = "level"; level = Math.max(0, Math.min(100, n)); }
+    else if (/\b(brighten|brighter|full|max|maximum)\b/.test(t)) { action = "level"; level = 100; }
+    else if (/\b(dim|darker|lower)\b/.test(t)) { action = "level"; level = 30; }
+    else if (/\b(on|turn on|switch on|start|open)\b/.test(t)) action = "on";
+
+    if (device && action) return { intent: "device", device, room, all, action, level };
+    if (device) return { intent: "device", device, room, all, action: "toggle", level };
+    return { intent: "unknown" };
+  }
+
+  return { sentinel, pickpath, homemind, norm };
+})();
+
+// ===================================================================== shared
+const $ = (s) => document.querySelector(s);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const D2R = Math.PI / 180;
+let PAL = {};
+function readPal() {
+  const s = getComputedStyle(document.documentElement);
+  const g = (n) => s.getPropertyValue(n).trim();
+  PAL = {};
+  ["bg", "panel", "ink", "muted", "line", "soft", "sentinel", "pick", "home", "ok", "warn", "bad", "land", "land-edge",
+   "globe", "grid", "floor", "rack", "wall", "glow", "cam", "cam-ink", "cam-line", "mono", "body", "display"]
+    .forEach((k) => { PAL[k] = g("--" + k); });
+}
+readPal();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readPal);
+new MutationObserver(readPal).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function rgba(hex, a) {
+  let m = String(hex).replace("#", "").trim();
+  if (m.length === 3) m = m.split("").map((c) => c + c).join("");
+  const n = parseInt(m, 16);
+  if (Number.isNaN(n)) return `rgba(128,128,128,${a})`;
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function fit(c) {
+  const d = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w * d) || c.height !== Math.round(h * d)) { c.width = Math.round(w * d); c.height = Math.round(h * d); }
+  const x = c.getContext("2d");
+  x.setTransform(d, 0, 0, d, 0, 0);
+  x.clearRect(0, 0, w, h);
+  return [x, w, h];
+}
+function mulberry32(a) {
+  return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const money = (x) => "$" + Number(x).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const int = (x) => Math.round(x).toLocaleString("en-US");
+const hav = (la1, lo1, la2, lo2) => {
+  const p1 = la1 * D2R, p2 = la2 * D2R, dp = p2 - p1, dl = (lo2 - lo1) * D2R;
+  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(a));
+};
+const clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+// Wire a command bar: form submit, example chips, mic. handler(text) -> {html, meta?, after?(el)}
+function wireCommand(id, handler) {
+  const form = $("#" + id + "-form"), input = $("#" + id + "-input"), reply = $("#" + id + "-reply"), mic = $("#" + id + "-mic");
+  function show(text, out, ms) {
+    reply.innerHTML = (text ? `<div class="you"><b>You:</b> ${esc(text)}</div>` : "") +
+      `<div class="ans">${out.html}</div>` +
+      (ms != null ? `<div class="meta">Understood and applied in ${ms < 0.01 ? "under 0.01" : ms < 1 ? ms.toFixed(2) : ms.toFixed(1)} ms${out.meta ? " · " + out.meta : ""}</div>` : "");
+    reply.classList.remove("pop"); void reply.offsetWidth; reply.classList.add("pop");
+    if (out.after) out.after(reply);
+  }
+  function run(text) {
+    const t0 = performance.now();
+    let out;
+    try { out = handler(text); } catch (err) { out = { html: `<p>That command hit an error: ${esc(err.message)}</p>` }; }
+    show(text, out, performance.now() - t0);
+  }
+  form.addEventListener("submit", (e) => { e.preventDefault(); const t = input.value.trim(); if (t) run(t); });
+  document.querySelectorAll(`[data-cmd="${id}"]`).forEach((b) => b.addEventListener("click", () => {
+    input.value = b.textContent.trim(); run(input.value);
+  }));
+  mic.addEventListener("click", () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const say = (msg) => show("", { html: `<p>${esc(msg)}</p>` });
+    if (!SR) { say("Voice input isn't available in this browser. Type the command instead."); return; }
+    try {
+      const r = new SR();
+      r.lang = "en-US"; r.interimResults = false; r.maxAlternatives = 1;
+      r.onresult = (e) => { const t = e.results[0][0].transcript; input.value = t; run(t); };
+      r.onerror = (e) => say(e.error === "not-allowed" || e.error === "service-not-allowed"
+        ? "Microphone access is blocked on this page. Type the command instead."
+        : "Voice input stopped before it heard a command. Try again, or type it.");
+      r.start();
+      say("Listening… say a command.");
+    } catch (err) { say("Voice input isn't available here. Type the command instead."); }
+  });
+  return { run, show, input };
+}
+
+// ===================================================================== SENTINEL
+const Sentinel = (() => {
+  const COUNTRY = { Tampa: "US", "New York": "US", Chicago: "US", Seattle: "US", Austin: "US", "San Francisco": "US",
+    Atlanta: "US", Denver: "US", Toronto: "CA", "Mexico City": "MX", London: "GB", Paris: "FR", Berlin: "DE",
+    Lagos: "NG", Mumbai: "IN", Hyderabad: "IN", Singapore: "SG", Tokyo: "JP", Sydney: "AU", "São Paulo": "BR",
+    Moscow: "RU", Bucharest: "RO" };
+  const CITY = CITIES.map(([name, lat, lon]) => ({ name, lat, lon, country: COUNTRY[name] }));
+  const US = CITY.filter((c) => c.country === "US");
+  const REGIONS = {
+    europe: { label: "Europe", codes: ["GB", "FR", "DE", "RO", "RU"], lon: 18, lat: 46 },
+    asia: { label: "Asia", codes: ["IN", "SG", "JP"], lon: 100, lat: 22 },
+    africa: { label: "Africa", codes: ["NG"], lon: 12, lat: 6 },
+    oceania: { label: "Australia", codes: ["AU"], lon: 140, lat: -25 },
+    southamerica: { label: "South America", codes: ["BR"], lon: -52, lat: -15 },
+    northamerica: { label: "North America", codes: ["US", "CA", "MX"], lon: -95, lat: 36 },
+  };
+  const KINDS = ["card_testing", "impossible_travel", "amount_spike", "account_takeover"];
+  const NICE = { card_testing: "card testing", impossible_travel: "impossible travel", amount_spike: "amount spike",
+    account_takeover: "account takeover", new_device_new_country: "new device in a new country", new_device: "new device" };
+  const CATS = ["grocery", "restaurant", "gas", "pharmacy", "retail", "coffee"];
+  const RANK = { ALLOW: 0, REVIEW: 1, BLOCK: 2 };
+
+  const rand = mulberry32(20261020);
+  const pick = (a) => a[Math.floor(rand() * a.length)];
+  const gauss = () => Math.sqrt(-2 * Math.log(rand() + 1e-9)) * Math.cos(2 * Math.PI * rand());
+  const devId = () => "d-" + Math.floor(rand() * 0xffffffff).toString(16);
+
+  const users = [];
+  for (let i = 0; i < 400; i++) {
+    const home = pick(US);
+    users.push({ id: "u" + String(1000 + i * 37 % 9000).padStart(5, "0"), home, mean: Math.exp(3.6 + gauss() * 0.45),
+      devices: [devId()], countries: ["US"], cats: [pick(CATS), pick(CATS), pick(CATS)], last: null, recent: [], n: 0 });
+  }
+  let sim = Math.floor(Date.now() / 1000) - 3 * 3600;
+  let tickN = 0;
+  const queue = [], alerts = [], arcs = [];
+  const stats = { scored: 0, flagged: 0, blocked: 0 };
+  let filter = null, rot = -70, tilt = 24, holdUntil = 0, targetRot = null, targetTilt = null;
+  let feedDirty = true, runner = null;
+
+  function txn(u, o = {}) {
+    return { id: Math.floor(rand() * 1e12).toString(36), user: u, ts: o.ts ?? sim, city: o.city || u.home,
+      amount: Math.round((o.amount ?? Math.max(1.5, u.mean * Math.exp(gauss() * 0.45))) * 100) / 100,
+      device: o.device || u.devices[0], cat: o.cat || pick(u.cats), label: o.label || null };
+  }
+
+  function score(t) {
+    const u = t.user, prev = u.last;
+    let km = 0, speed = 0, mins = null;
+    if (prev) {
+      km = hav(prev.city.lat, prev.city.lon, t.city.lat, t.city.lon);
+      speed = km / (Math.max(t.ts - prev.ts, 30) / 3600);
+      mins = (t.ts - prev.ts) / 60;
+    }
+    const v10 = u.recent.filter((x) => t.ts - x <= 600).length + 1;
+    const newDev = u.n > 0 && !u.devices.includes(t.device);
+    const newCountry = u.n > 0 && !u.countries.includes(t.city.country);
+    const ratio = t.amount / u.mean;
+    const reasons = [];
+    let decision = "ALLOW";
+    const up = (d) => { if (RANK[d] > RANK[decision]) decision = d; };
+    if (prev && km > 500 && speed > 900) {
+      reasons.push({ code: "impossible_travel", text: `${Math.max(1, Math.round(mins))} minutes earlier this card was used in ${prev.city.name}, ${int(km)} km away. Getting here in time means travelling at ${int(speed)} km/h, and an airliner manages about 900.` });
+      up("BLOCK");
+    }
+    if (newDev && newCountry) {
+      reasons.push({ code: "new_device_new_country", text: `It came from a device this cardholder has never used, in a country they have never bought from (${t.city.country}).` });
+      up("BLOCK");
+    } else if (newDev && ratio > 3) {
+      reasons.push({ code: "new_device", text: "It came from a device this cardholder has never used." });
+      up("REVIEW");
+    }
+    if (v10 >= 3 && t.amount < 10) {
+      reasons.push({ code: "card_testing", text: `It is charge number ${v10} in ten minutes, each one under $10. That is how stolen card numbers get tested before a big purchase.` });
+      up(newDev ? "BLOCK" : "REVIEW");
+    }
+    if (u.n >= 5 && ratio > 12) {
+      reasons.push({ code: "amount_spike", text: `It is ${ratio.toFixed(1)}× this cardholder's usual spend of ${money(u.mean)}.` });
+      up(ratio > 25 || newDev ? "BLOCK" : "REVIEW");
+    }
+    u.recent = u.recent.filter((x) => t.ts - x <= 3600).concat(t.ts);
+    if (decision !== "BLOCK") {          // blocked charges never teach the profile
+      u.last = { city: t.city, ts: t.ts };
+      if (!u.devices.includes(t.device)) u.devices.push(t.device);
+      if (!u.countries.includes(t.city.country)) u.countries.push(t.city.country);
+      u.n++; u.mean += (t.amount - u.mean) / Math.min(u.n + 1, 40);
+    }
+    return { decision, reasons, prevCity: prev ? prev.city : null, km, speed, mins, ratio };
+  }
+
+  function process(t, live) {
+    const s = score(t);
+    stats.scored++;
+    if (s.decision === "ALLOW") return;
+    stats.flagged++;
+    if (s.decision === "BLOCK") stats.blocked++;
+    const a = { ...t, ...s, uid: t.user.id, usual: t.user.mean, born: live ? performance.now() : -1e9, fresh: live };
+    alerts.unshift(a);
+    if (alerts.length > 80) alerts.length = 80;
+    const travel = s.reasons.some((r) => r.code === "impossible_travel" || r.code === "new_device_new_country");
+    arcs.push({ from: travel && s.prevCity ? s.prevCity : null, to: t.city, decision: s.decision, born: live ? performance.now() : performance.now() - 15000 });
+    if (arcs.length > 30) arcs.shift();
+    feedDirty = true;
+  }
+
+  function attack(kind) {
+    kind = kind || pick(KINDS);
+    const ready = users.filter((x) => x.n >= 6 && x.last);
+    if (!ready.length) return null;          // too early in the warm-up: no cardholder has history yet
+    const u = pick(ready);
+    if (kind === "card_testing") {
+      const dev = rand() < 0.7 ? devId() : u.devices[0];
+      for (let k = 0; k < 6; k++) queue.push({ at: tickN + 1 + k * 2, make: () => txn(u, { amount: 0.5 + rand() * 4.4, device: dev, cat: "digital goods", label: kind }) });
+    } else if (kind === "impossible_travel") {
+      const far = pick(CITY.filter((c) => hav(c.lat, c.lon, u.home.lat, u.home.lon) > 3000));
+      const mins = 8 + rand() * 22;
+      queue.push({ at: tickN + 1, make: () => txn(u, { ts: sim - mins * 60 }) });
+      queue.push({ at: tickN + 2, make: () => txn(u, { city: far, amount: u.mean * (1.5 + rand() * 4), cat: pick(["electronics", "jewelry", "retail"]), label: kind }) });
+    } else if (kind === "amount_spike") {
+      queue.push({ at: tickN + 1, make: () => txn(u, { amount: u.mean * (28 + rand() * 18), cat: pick(["electronics", "jewelry"]), label: kind }) });
+    } else {
+      const far = pick(CITY.filter((c) => c.country !== "US"));
+      const dev = devId();
+      for (let k = 0; k < 2; k++) queue.push({ at: tickN + 1 + k * 3, make: () => txn(u, { city: far, device: dev, amount: u.mean * (4 + rand() * 6), cat: "gift cards", label: kind }) });
+    }
+    return { kind, user: u };
+  }
+
+  function tick(live) {
+    tickN++; sim += 2;
+    for (let i = queue.length - 1; i >= 0; i--) if (queue[i].at <= tickN) { process(queue[i].make(), live); queue.splice(i, 1); }
+    const u = pick(users), r = rand();
+    if (r < 0.004) attack();
+    else if (r < 0.03) process(txn(u, { amount: u.mean * (3 + rand() * 9), cat: pick(["electronics", "travel", "retail"]) }), live);
+    else if (r < 0.034) { const d = devId(); process(txn(u, { device: d }), live); }
+    else process(txn(u), live);
+    if (live && tickN % 4 === 0) {
+      $("#s-scored").textContent = int(stats.scored);
+      $("#s-flagged").textContent = int(stats.flagged);
+      $("#s-blocked").textContent = int(stats.blocked);
+    }
+  }
+
+  // warm up: three simulated hours of history before the page opens
+  for (let i = 0; i < 5400; i++) tick(false);
+
+  // ------------------------------------------------------------------ views
+  const feedEl = $("#sentinel-feed");
+  function inFilter(a) { return !filter || REGIONS[filter].codes.includes(a.city.country); }
+  function renderFeed() {
+    feedDirty = false;
+    $("#s-scored").textContent = int(stats.scored);
+    $("#s-flagged").textContent = int(stats.flagged);
+    $("#s-blocked").textContent = int(stats.blocked);
+    $("#sentinel-filter").textContent = filter ? REGIONS[filter].label + " only" : "all regions";
+    const rows = alerts.filter(inFilter).slice(0, 14);
+    if (!rows.length) { feedEl.innerHTML = `<li class="row"><span></span><span class="muted">No alerts in this region yet. Say “simulate an account takeover” to create one.</span></li>`; return; }
+    feedEl.innerHTML = rows.map((a, i) => `<li class="row click${a.fresh && i < 3 && performance.now() - a.born < 1500 ? " new" : ""}" data-uid="${a.uid}" tabindex="0">
+      <span class="badge ${a.decision === "BLOCK" ? "b-block" : "b-review"}">${a.decision}</span>
+      <span>${money(a.amount)} · ${esc(a.city.name)}, ${a.city.country}</span>
+      <span class="mono muted">${clock(a.ts)}</span>
+      <span class="sub">${esc(a.uid)} · ${esc(a.reasons.map((r) => NICE[r.code]).join(", "))}</span></li>`).join("");
+  }
+  feedEl.addEventListener("click", (e) => { const li = e.target.closest("[data-uid]"); if (li && runner) { runner.input.value = `Why was ${li.dataset.uid} blocked?`; runner.run(runner.input.value); } });
+  feedEl.addEventListener("keydown", (e) => { if (e.key === "Enter") e.target.click(); });
+
+  // ------------------------------------------------------------------ globe
+  const canvas = $("#sentinel-globe");
+  function vec(lat, lon) { const la = lat * D2R, lo = lon * D2R; return [Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo)]; }
+  function view(v) {
+    const r = rot * D2R, t = tilt * D2R;
+    const x = v[0] * Math.cos(r) - v[2] * Math.sin(r), z = v[2] * Math.cos(r) + v[0] * Math.sin(r), y = v[1];
+    return [x, y * Math.cos(t) - z * Math.sin(t), y * Math.sin(t) + z * Math.cos(t)];
+  }
+  function slerp(a, b, t) {
+    const d = Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])), om = Math.acos(d);
+    if (om < 1e-4) return a;
+    const s = Math.sin(om), k1 = Math.sin((1 - t) * om) / s, k2 = Math.sin(t * om) / s;
+    return [a[0] * k1 + b[0] * k2, a[1] * k1 + b[1] * k2, a[2] * k1 + b[2] * k2];
+  }
+  let lastTs = 0;
+  function draw(ts) {
+    const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0); lastTs = ts;
+    if (targetRot != null) {
+      let d = ((targetRot - rot + 540) % 360) - 180;
+      rot += d * Math.min(1, dt * 3); tilt += (targetTilt - tilt) * Math.min(1, dt * 3);
+      if (Math.abs(d) < 0.3) targetRot = null;
+    } else if (ts > holdUntil && !reduceMotion) rot += dt * 6;
+    const [x, w, h] = fit(canvas);
+    const R = Math.min(w, h) * 0.44, cx = w / 2, cy = h / 2;
+    const P = (v, lift = 1) => { const q = view(v); return { x: cx + q[0] * R * lift, y: cy - q[1] * R * lift, z: q[2] }; };
+    // sphere
+    x.fillStyle = PAL.globe; x.strokeStyle = PAL.line; x.lineWidth = 1;
+    x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.fill(); x.stroke();
+    // graticule
+    x.strokeStyle = PAL.grid;
+    for (let lon = -180; lon < 180; lon += 30) line(Array.from({ length: 37 }, (_, i) => vec(-90 + i * 5, lon)));
+    for (let lat = -60; lat <= 60; lat += 30) line(Array.from({ length: 73 }, (_, i) => vec(lat, -180 + i * 5)));
+    function line(vs) {
+      x.beginPath(); let pen = false;
+      for (const v of vs) { const p = P(v); if (p.z > 0) { pen ? x.lineTo(p.x, p.y) : x.moveTo(p.x, p.y); pen = true; } else pen = false; }
+      x.stroke();
+    }
+    // land
+    x.lineWidth = 1;
+    for (const ring of LAND) {
+      const pts = ring.map(([lo, la]) => P(vec(la, lo)));
+      if (pts.every((p) => p.z > 0.02)) {
+        x.beginPath(); pts.forEach((p, i) => (i ? x.lineTo(p.x, p.y) : x.moveTo(p.x, p.y))); x.closePath();
+        x.fillStyle = PAL.land; x.fill(); x.strokeStyle = PAL["land-edge"]; x.stroke();
+      } else {
+        x.strokeStyle = PAL["land-edge"]; x.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i], b = pts[(i + 1) % pts.length];
+          if (a.z > 0 && b.z > 0) { x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); }
+        }
+        x.stroke();
+      }
+    }
+    // cities
+    x.fillStyle = PAL["land-edge"];
+    x.font = `10px ${PAL.body}`; x.textBaseline = "middle";
+    for (const c of CITY) {
+      const p = P(vec(c.lat, c.lon));
+      if (p.z <= 0) continue;
+      x.beginPath(); x.arc(p.x, p.y, 2, 0, 7); x.fill();
+      if (filter && REGIONS[filter].codes.includes(c.country)) { x.fillStyle = PAL.muted; x.fillText(c.name, p.x + 5, p.y); x.fillStyle = PAL["land-edge"]; }
+    }
+    // arcs and pings
+    const now = performance.now();
+    for (const a of arcs) {
+      if (filter && !REGIONS[filter].codes.includes(a.to.country)) continue;
+      const age = now - a.born, fade = Math.max(0.15, 1 - age / 30000);
+      const col = a.decision === "BLOCK" ? PAL.bad : PAL.warn;
+      const to = vec(a.to.lat, a.to.lon);
+      if (a.from) {
+        const from = vec(a.from.lat, a.from.lon), prog = Math.min(1, age / 1400), N = 48;
+        x.strokeStyle = rgba(col, fade); x.lineWidth = 1.8; x.beginPath(); let pen = false, head = null;
+        for (let i = 0; i <= N * prog; i++) {
+          const t = i / N, p = P(slerp(from, to, t), 1 + 0.18 * Math.sin(Math.PI * t));
+          if (p.z > -0.15) { pen ? x.lineTo(p.x, p.y) : x.moveTo(p.x, p.y); pen = true; head = p; } else pen = false;
+        }
+        x.stroke();
+        if (head && prog < 1) { x.fillStyle = col; x.beginPath(); x.arc(head.x, head.y, 3, 0, 7); x.fill(); }
+      }
+      const p = P(to);
+      if (p.z > 0) {
+        x.fillStyle = rgba(col, fade); x.beginPath(); x.arc(p.x, p.y, 3.5, 0, 7); x.fill();
+        if (age < 6000 && !reduceMotion) {
+          const k = (age % 1500) / 1500;
+          x.strokeStyle = rgba(col, (1 - k) * 0.8); x.lineWidth = 1.5; x.beginPath(); x.arc(p.x, p.y, 4 + k * 16, 0, 7); x.stroke();
+        }
+      }
+    }
+    if (feedDirty) renderFeed();
+  }
+
+  // ------------------------------------------------------------------ commands
+  function explain(a) {
+    const cat = a.cat === "gift cards" ? "gift card" : a.cat, art = /^[aeiou]/.test(cat) ? "an" : "a";
+    const head = `<p><b>${a.decision === "BLOCK" ? "Blocked" : "Sent for review"}:</b> ${money(a.amount)} at ${art} ${esc(cat)} merchant in ${esc(a.city.name)}, ${a.city.country}. Cardholder ${esc(a.uid)}, who usually spends about ${money(a.usual)}.</p>`;
+    const why = `<ul>${a.reasons.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`;
+    const next = a.decision === "BLOCK"
+      ? `<div class="quote">Text to the customer: “We blocked a ${money(a.amount)} charge in ${esc(a.city.name)}. Reply YES if this was you, or NO and we'll freeze the card.”</div>`
+      : `<p>Next step: an analyst checks it within 15 minutes. The card keeps working in the meantime.</p>`;
+    const truth = `<p class="note">Simulator ground truth: ${a.label ? "fraud (" + esc(NICE[a.label]) + ")" : "a genuine purchase, so this one is a false alarm"}.</p>`;
+    return head + why + next + truth;
+  }
+  function handle(text) {
+    const it = NLU.sentinel(text);
+    if (it.intent === "explain") {
+      let a = it.user ? alerts.find((x) => x.uid === it.user) : alerts.find((x) => x.decision === "BLOCK" && inFilter(x)) || alerts[0];
+      if (!a) {
+        const recent = [...new Set(alerts.slice(0, 5).map((x) => x.uid))].join(", ");
+        return { html: `<p>${esc(it.user)} has no flagged transactions yet. Recently flagged cardholders: ${esc(recent)}.</p>` };
+      }
+      focus(a.city.lon, a.city.lat);
+      return { html: explain(a), meta: "explanation built from the decision's own features" };
+    }
+    if (it.intent === "attack") {
+      const launched = attack(it.kind);
+      if (!launched) return { html: "<p>The stream is still warming up. Try again in a moment.</p>" };
+      const { kind, user } = launched;
+      const msg = { card_testing: "a burst of tiny charges from a new device", impossible_travel: "a home purchase followed by one on another continent minutes later",
+        amount_spike: "one purchase about 30× normal spend", account_takeover: "gift-card purchases from a new device abroad" }[kind];
+      setTimeout(() => { const a = alerts.find((x) => x.uid === user.id && x.fresh); if (a) { focus(a.city.lon, a.city.lat); runner.show("", { html: `<p><b>Caught.</b> ${esc(NICE[kind])} on ${esc(user.id)}.</p>` + explain(a) }); } }, 1400);
+      return { html: `<p>Launching ${esc(NICE[kind])} against cardholder ${esc(user.id)}: ${esc(msg)}. Watch the globe and the alert list.</p>`, meta: "attack queued into the live stream" };
+    }
+    if (it.intent === "region") {
+      filter = it.region; feedDirty = true; const R = REGIONS[filter]; focus(R.lon, R.lat);
+      const list = alerts.filter(inFilter);
+      const blocked = list.filter((a) => a.decision === "BLOCK").length;
+      const top = topReason(list);
+      return { html: list.length
+        ? `<p>${list.length} of the last ${alerts.length} alerts happened in ${R.label}: ${blocked} blocked and ${list.length - blocked} sent for review.${top ? ` Most common reason: ${esc(top)}.` : ""}</p><p>The globe and alert list now show ${R.label} only. Say “show all” to go back.</p>`
+        : `<p>No alerts in ${R.label} among the last ${alerts.length}. Try “simulate an account takeover”; those usually come from abroad.</p>` };
+    }
+    if (it.intent === "report") {
+      const blocked = alerts.filter((a) => a.decision === "BLOCK"), fraud = alerts.filter((a) => a.label).length;
+      const top = topReason(alerts), cities = {};
+      alerts.forEach((a) => { cities[a.city.name] = (cities[a.city.name] || 0) + 1; });
+      const city = Object.entries(cities).sort((a, b) => b[1] - a[1])[0];
+      return { html: `<p><b>Summary of ${int(stats.scored)} transactions.</b> ${int(stats.flagged)} were flagged (${(stats.flagged / stats.scored * 100).toFixed(2)}%) and ${int(stats.blocked)} blocked.</p>
+        <ul><li>Most common reason: ${esc(top)}.</li><li>Busiest alert location: ${esc(city[0])} (${city[1]} alerts).</li>
+        <li>Of the last ${alerts.length} alerts, ${fraud} were real fraud by the simulator's ground truth and ${alerts.length - fraud} were false alarms.</li></ul>` };
+    }
+    if (it.intent === "clear") { filter = null; feedDirty = true; holdUntil = 0; return { html: "<p>Showing all regions again.</p>" }; }
+    return { html: `<p>I didn't catch that. Sentinel understands requests like these:</p><ul><li>“Why was u01037 blocked?”</li><li>“Simulate impossible travel”</li><li>“Show me fraud in Asia”</li><li>“Give me a summary”</li></ul>` };
+  }
+  function topReason(list) {
+    const c = {};
+    list.forEach((a) => a.reasons.forEach((r) => { c[r.code] = (c[r.code] || 0) + 1; }));
+    const t = Object.entries(c).sort((a, b) => b[1] - a[1])[0];
+    return t ? NICE[t[0]] : null;
+  }
+  function focus(lon, lat) { targetRot = lon; targetTilt = Math.max(-30, Math.min(40, lat)); holdUntil = performance.now() + 9000; }
+
+  setInterval(() => tick(true), 125);
+  return {
+    draw,
+    start() { runner = wireCommand("sentinel", handle); runner.input.value = "Why was the last transaction blocked?"; runner.run(runner.input.value); },
+  };
+})();
+
+// ===================================================================== boot
+Sentinel.start();
+(function loop(t) { Sentinel.draw(t); requestAnimationFrame(loop); })(0);
+</script>
+</body>
+</html>

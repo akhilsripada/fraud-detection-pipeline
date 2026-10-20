@@ -1,7 +1,15 @@
-"""Run the whole pipeline on your laptop with a live dashboard. No AWS needed.
+"""Run Sentinel on your laptop: live pipeline, dashboard, assistant and API. No AWS needed.
 
+    python run.py                          # easiest: starts this and opens the browser
     python local/demo_server.py            # then open http://localhost:8000
     python local/demo_server.py --tps 200 --port 8080
+
+HTTP API (used by the dashboard and by the MCP server in mcp/):
+    POST /api/ask            {"text": "why was u01037 blocked?"} -> answer
+    GET  /api/alerts         ?limit=20&user=u01037
+    GET  /api/alerts/<id>    one alert with its features
+    GET  /api/stats          running totals
+    POST /api/attack?type=   inject a simulated attack
 
 The simulator streams transactions in real time into the same Pipeline the
 Lambda runs (in-memory state instead of DynamoDB). Decisions are pushed to
@@ -25,10 +33,12 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from fraud_pipeline.assistant import Assistant, GeminiRouter  # noqa: E402
 from fraud_pipeline.pipeline import ALLOW, BLOCK, FraudScorer, Pipeline  # noqa: E402
 from fraud_pipeline.simulator import ATTACKS, TransactionSimulator  # noqa: E402
 from fraud_pipeline.sinks import InMemoryAlertSink, alert_payload  # noqa: E402
 from fraud_pipeline.state import InMemoryStateStore  # noqa: E402
+from fraud_pipeline.store import AlertStore  # noqa: E402
 
 DASHBOARD = ROOT / "dashboard" / "index.html"
 
@@ -61,16 +71,19 @@ class Hub:
 
 
 class Engine(threading.Thread):
-    def __init__(self, hub: Hub, tps: float, users: int, fraud_rate: float, warmup: int):
+    def __init__(self, hub: Hub, tps: float, users: int, fraud_rate: float, warmup: int,
+                 store: AlertStore | None = None):
         super().__init__(daemon=True)
         self.hub, self.tps, self.warmup = hub, tps, warmup
+        self.store = store or AlertStore()
+        self._pending = {"processed": 0, "flagged": 0, "blocked": 0}
         self.alerts = InMemoryAlertSink()
         self.pipeline = Pipeline(FraudScorer.default(), InMemoryStateStore(), [self.alerts])
         # start the simulated clock in the past so warm-up history ends "now"
         self.sim = TransactionSimulator(n_users=users, tps=tps, fraud_rate=fraud_rate,
                                         seed=None, start_ts=time.time() - warmup / tps)
         self.attacks: queue.Queue = queue.Queue()
-        self.recent_alerts: deque = deque(maxlen=50)
+        self.recent_alerts: deque = deque(reversed(self.store.recent(50)), maxlen=50)
         self.window: deque = deque()  # (wall_ts, latency_ms, decision, label)
         self.totals = {"processed": 0, "flagged": 0, "blocked": 0, "tp": 0, "fp": 0, "fn": 0}
         self.ready = False
@@ -84,9 +97,11 @@ class Engine(threading.Thread):
         threading.Thread(target=self._stats_loop, daemon=True).start()
         for txn in self.sim.realtime():
             while not self.attacks.empty():
-                kind = self.attacks.get()
+                kind, reply = self.attacks.get()
                 user = self.sim.inject_attack(kind)
-                self.hub.publish({"type": "info", "message": f"Injected {kind} on {user}"})
+                if reply is not None:
+                    reply.put(user)
+                self.hub.publish({"type": "info", "message": f"Injected {kind.replace('_', ' ')} on {user}"})
             self._on_txn(txn)
 
     def _on_txn(self, txn):
@@ -103,10 +118,30 @@ class Engine(threading.Thread):
         t["fp"] += flagged and d.label == 0
         t["fn"] += (not flagged) and d.label == 1
         self.window.append((now, d.latency_ms))
+        p = self._pending
+        p["processed"] += 1
+        p["flagged"] += flagged
+        p["blocked"] += d.decision == BLOCK
         if flagged:
-            msg = alert_payload(d)
+            msg = {**alert_payload(d), "features": d.features}
+            self.store.save(msg)
             self.recent_alerts.append(msg)
             self.hub.publish(msg)
+
+    def inject(self, kind: str, timeout: float = 2.0) -> str | None:
+        """Queue an attack from another thread and wait for the targeted cardholder id."""
+        reply: queue.Queue = queue.Queue(maxsize=1)
+        self.attacks.put((kind, reply))
+        try:
+            return reply.get(timeout=timeout)
+        except queue.Empty:
+            return None
+
+    def list_alerts(self, limit: int = 100) -> list[dict]:
+        return self.store.recent(limit)
+
+    def stats(self) -> dict:
+        return {**self.store.stats(), "session": dict(self.totals)}
 
     def snapshot(self) -> dict:
         now = time.time()
@@ -125,11 +160,13 @@ class Engine(threading.Thread):
 
     def _stats_loop(self):
         while True:
+            pending, self._pending = self._pending, {"processed": 0, "flagged": 0, "blocked": 0}
+            self.store.bump(**pending)  # one write per second, not one per transaction
             self.hub.publish(self.snapshot())
             time.sleep(1)
 
 
-def make_handler(engine: Engine, hub: Hub):
+def make_handler(engine: Engine, hub: Hub, assistant: Assistant):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
@@ -153,7 +190,21 @@ def make_handler(engine: Engine, hub: Hub):
                                                    "recent": list(engine.recent_alerts)}).encode())
             if path == "/events":
                 return self._stream()
+            if path == "/api/stats":
+                return self._json(200, engine.stats())
+            if path == "/api/alerts":
+                q = parse_qs(urlparse(self.path).query)
+                limit = max(1, min(200, int(q.get("limit", ["20"])[0] or 20)))
+                return self._json(200, engine.store.recent(limit, q.get("user", [None])[0]))
+            if path.startswith("/api/alerts/"):
+                a = engine.store.get(path.rsplit("/", 1)[1])
+                return self._json(200, a) if a else self._json(404, {"error": "no alert with that id"})
+            if path in ("/ar", "/ar/"):
+                return self._send(200, (ROOT / "ar" / "index.html").read_bytes(), "text/html; charset=utf-8")
             self._send(404, b'{"error":"not found"}')
+
+        def _json(self, code, obj):
+            self._send(code, json.dumps(obj).encode())
 
         def do_POST(self):
             url = urlparse(self.path)
@@ -162,8 +213,20 @@ def make_handler(engine: Engine, hub: Hub):
                 if kind not in ATTACKS:
                     return self._send(400, json.dumps({"error": f"type must be one of {ATTACKS}"})
                                       .encode())
-                engine.attacks.put(kind)
+                engine.attacks.put((kind, None))
                 return self._send(202, json.dumps({"queued": kind}).encode())
+            if url.path == "/api/ask":
+                try:
+                    n = int(self.headers.get("Content-Length", 0))
+                    text = str(json.loads(self.rfile.read(min(n, 4096)) or b"{}").get("text", "")).strip()
+                except (ValueError, AttributeError):
+                    return self._json(400, {"error": 'send JSON like {"text": "give me a summary"}'})
+                if not text:
+                    return self._json(400, {"error": "text is empty"})
+                t0 = time.perf_counter()
+                out = assistant.ask(text[:500])
+                out["ms"] = round((time.perf_counter() - t0) * 1000, 2)
+                return self._json(200, out)
             self._send(404, b'{"error":"not found"}')
 
         def _stream(self):
@@ -202,15 +265,20 @@ def main():
                     help="share of events that start an attack (higher = more alerts)")
     ap.add_argument("--warmup", type=int, default=100_000,
                     help="historical transactions to build user profiles first")
+    ap.add_argument("--db", default=str(ROOT / "data" / "sentinel.db"), help="SQLite file for alerts")
     args = ap.parse_args()
 
     hub = Hub()
-    engine = Engine(hub, args.tps, args.users, args.fraud_rate, args.warmup)
+    engine = Engine(hub, args.tps, args.users, args.fraud_rate, args.warmup, AlertStore(args.db))
+    router = GeminiRouter.from_env()
+    assistant = Assistant(engine.list_alerts, engine.stats, engine.inject, router)
+    print("assistant: rules" + (" + Gemini for free-form questions" if router else
+                                " only (set GEMINI_API_KEY to add free-form questions)"))
     print(f"warming up user profiles with {args.warmup:,} historical transactions...")
     engine.start()
     while not engine.ready:
         time.sleep(0.2)
-    server = ThreadingHTTPServer((args.host, args.port), make_handler(engine, hub))
+    server = ThreadingHTTPServer((args.host, args.port), make_handler(engine, hub, assistant))
     server.daemon_threads = True
     print(f"live at http://{args.host}:{args.port}  (Ctrl+C to stop)")
     try:

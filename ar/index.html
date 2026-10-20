@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sentinel AR Globe</title>
+<style>
+  :root { --bg: #0c1014; --ink: #e6eaee; --muted: #8b95a1; --block: #ff6e64; --review: #f2b553; --panel: rgba(12,16,20,.82); }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+  #hud { position: fixed; left: max(12px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right));
+         display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; pointer-events: none; z-index: 2; }
+  .card { background: var(--panel); border: 1px solid #252c35; border-radius: 10px; padding: 10px 12px; pointer-events: auto; max-width: 420px; }
+  h1 { font-size: 16px; margin: 0 0 2px; }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  #last { font-size: 13px; }
+  .b { font-weight: 700; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 6px; }
+  .BLOCK { color: var(--block); background: rgba(255,110,100,.15); } .REVIEW { color: var(--review); background: rgba(242,181,83,.15); }
+  a { color: var(--ink); }
+</style>
+<script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="hud">
+  <div class="card">
+    <h1>Sentinel AR globe</h1>
+    <div class="muted" id="how">Drag to spin. On an Android phone with Chrome, tap <b>Start AR</b>, point at a table, and tap to place the globe.</div>
+  </div>
+  <div class="card" id="last"><span class="muted">Waiting for alerts…</span></div>
+</div>
+<script type="module">
+import * as THREE from "three";
+import { ARButton } from "three/addons/webxr/ARButton.js";
+
+const LAND = [[[-165,65],[-160,71],[-140,70],[-125,70],[-110,73],[-95,72],[-82,73],[-70,67],[-62,60],[-56,52],[-64,47],[-70,43],[-74,40],[-76,35],[-81,31],[-80,25],[-82,28],[-85,30],[-90,29],[-94,29],[-97,26],[-97,21],[-95,19],[-91,19],[-87,21],[-88,16],[-84,15],[-83,10],[-79,9],[-77,8],[-80,7],[-83,8],[-86,12],[-92,15],[-96,16],[-105,20],[-106,23],[-110,23],[-112,29],[-115,32],[-117,32],[-120,34],[-123,38],[-124,42],[-124,48],[-128,51],[-134,57],[-140,60],[-150,61],[-155,58],[-162,58],[-165,62]],[[-55,60],[-45,60],[-40,65],[-22,70],[-20,77],[-30,83],[-55,82],[-70,78],[-60,76],[-55,70]],[[-77,8],[-72,12],[-63,11],[-55,6],[-50,2],[-48,-1],[-40,-3],[-35,-6],[-35,-9],[-39,-14],[-40,-22],[-48,-26],[-53,-33],[-58,-38],[-62,-40],[-65,-45],[-68,-50],[-69,-55],[-74,-53],[-75,-45],[-73,-37],[-71,-30],[-70,-18],[-76,-14],[-81,-6],[-80,-1],[-78,2],[-78,7]],[[-9,43],[-9,39],[-6,36],[-2,37],[0,39],[3,43],[8,44],[12,42],[16,38],[18,40],[13,45],[19,42],[22,37],[26,40],[29,41],[36,36],[35,33],[34,28],[39,20],[43,13],[45,13],[52,16],[57,19],[59,22],[56,26],[51,24],[48,29],[52,27],[57,25],[62,25],[67,24],[70,21],[73,17],[77,8],[80,13],[80,16],[87,21],[92,22],[94,17],[98,16],[98,8],[101,3],[104,1],[100,7],[101,13],[105,9],[109,12],[108,17],[106,20],[110,21],[117,23],[121,29],[122,31],[119,35],[122,37],[118,39],[122,40],[125,40],[127,35],[129,35],[130,42],[135,44],[141,48],[140,54],[136,55],[143,59],[155,59],[163,62],[178,65],[180,69],[160,70],[140,72],[120,73],[105,78],[95,76],[80,73],[70,73],[60,70],[45,68],[40,66],[33,70],[25,71],[15,68],[5,62],[5,58],[10,59],[11,55],[8,57],[8,54],[5,53],[2,51],[-2,48],[-5,48],[-1,45],[-2,43]],[[-5,50],[1,51],[2,53],[0,54],[-2,56],[-3,58],[-5,58],[-6,56],[-3,54],[-4,53],[-5,52]],[[-17,15],[-17,21],[-13,27],[-10,30],[-6,36],[0,36],[10,37],[11,33],[20,31],[25,32],[32,31],[34,28],[39,21],[43,12],[51,12],[51,10],[48,5],[41,-1],[39,-5],[40,-11],[40,-16],[35,-20],[35,-24],[33,-27],[31,-30],[27,-34],[20,-35],[18,-32],[15,-27],[12,-18],[13,-12],[12,-5],[9,-1],[9,4],[5,5],[-2,5],[-8,4],[-13,8],[-17,13]],[[44,-25],[47,-25],[50,-15],[49,-12],[44,-17]],[[130,31],[132,34],[135,34],[140,35],[141,38],[142,41],[140,41],[140,38],[136,37],[132,35]],[[95,5],[98,4],[106,-6],[104,-6],[100,-2]],[[109,1],[111,-3],[116,-4],[119,1],[117,7],[113,3]],[[105,-6],[114,-7],[114,-8],[106,-7]],[[131,-1],[141,-3],[150,-10],[143,-9],[138,-8]],[[114,-22],[114,-34],[118,-35],[124,-33],[131,-31],[136,-35],[138,-34],[140,-38],[146,-39],[150,-37],[153,-32],[153,-25],[146,-19],[145,-15],[142,-11],[141,-17],[136,-12],[131,-12],[126,-14],[122,-18]],[[172,-35],[178,-38],[175,-41],[171,-44],[167,-46],[170,-42]]];
+const CITIES = [["London",51.51,-0.13],["Tokyo",35.68,139.69],["Sydney",-33.87,151.21],["São Paulo",-23.55,-46.63],["Mumbai",19.08,72.88],["Lagos",6.52,3.38],["Singapore",1.35,103.82],["Moscow",55.76,37.62],["Seattle",47.61,-122.33],["New York",40.71,-74.01],["Tampa",27.95,-82.46],["Mexico City",19.43,-99.13],["San Francisco",37.77,-122.42],["Denver",39.74,-104.99],["Chicago",41.88,-87.63],["Austin",30.27,-97.74],["Atlanta",33.75,-84.39],["Toronto",43.65,-79.38],["Paris",48.86,2.35],["Berlin",52.52,13.4],["Bucharest",44.43,26.1],["Hyderabad",17.39,78.49]];
+const R = 1;
+const toVec = (lat, lon, r = R) => {
+  const la = THREE.MathUtils.degToRad(lat), lo = THREE.MathUtils.degToRad(lon);
+  return new THREE.Vector3(r * Math.cos(la) * Math.sin(lo), r * Math.sin(la), r * Math.cos(la) * Math.cos(lo));
+};
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.01, 50);
+camera.position.set(0, 0.4, 3.2);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x223344, 1.4));
+
+const globe = new THREE.Group();
+scene.add(globe);
+globe.add(new THREE.Mesh(new THREE.SphereGeometry(R, 64, 48),
+  new THREE.MeshStandardMaterial({ color: 0x18202a, roughness: 0.9, transparent: true, opacity: 0.94 })));
+const landMat = new THREE.LineBasicMaterial({ color: 0x5b6878 });
+for (const ring of LAND) {
+  const pts = [];
+  for (let i = 0; i <= ring.length; i++) {           // densify edges so they hug the sphere
+    const [lo1, la1] = ring[i % ring.length], [lo2, la2] = ring[(i + 1) % ring.length];
+    for (let k = 0; k < 4; k++) pts.push(toVec(la1 + (la2 - la1) * k / 4, lo1 + (lo2 - lo1) * k / 4, R * 1.002));
+  }
+  globe.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), landMat));
+}
+const cityGeo = new THREE.SphereGeometry(0.008, 8, 8), cityMat = new THREE.MeshBasicMaterial({ color: 0x8b95a1 });
+const cityPos = {};
+for (const [name, lat, lon] of CITIES) { cityPos[name] = [lat, lon]; const m = new THREE.Mesh(cityGeo, cityMat); m.position.copy(toVec(lat, lon, R * 1.004)); globe.add(m); }
+
+// ---------------------------------------------------------------- alerts as arcs and pins
+const COLORS = { BLOCK: 0xff6e64, REVIEW: 0xf2b553 };
+const live = [];
+const lastSeen = new Map();
+function addAlert(a) {
+  const color = COLORS[a.decision] || 0xffffff;
+  const pin = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 12), new THREE.MeshBasicMaterial({ color, transparent: true }));
+  pin.position.copy(toVec(a.lat, a.lon, R * 1.01));
+  globe.add(pin);
+  const item = { born: performance.now(), meshes: [pin] };
+  const prev = lastSeen.get(a.user_id);
+  if (prev && Math.abs(prev[0] - a.lat) + Math.abs(prev[1] - a.lon) > 8) {
+    const from = toVec(prev[0], prev[1]), to = toVec(a.lat, a.lon), pts = [];
+    for (let i = 0; i <= 64; i++) {
+      const t = i / 64, v = from.clone().lerp(to, t).normalize();
+      pts.push(v.multiplyScalar(R * (1.01 + 0.25 * Math.sin(Math.PI * t))));
+    }
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.006, 6),
+      new THREE.MeshBasicMaterial({ color, transparent: true }));
+    tube.geometry.setDrawRange(0, 0);
+    globe.add(tube); item.meshes.push(tube); item.tube = tube;
+  }
+  lastSeen.set(a.user_id, [a.lat, a.lon]);
+  live.push(item);
+  while (live.length > 60) { const old = live.shift(); old.meshes.forEach((m) => { globe.remove(m); m.geometry.dispose(); }); }
+  document.getElementById("last").innerHTML = `<span class="b ${a.decision}">${a.decision}</span>$${Number(a.amount).toFixed(2)} in ${a.city}, ${a.country}<div class="muted">${a.user_id} · ${(a.rules_fired || []).join(", ").replaceAll("_", " ") || "model score"}</div>`;
+}
+
+// Live data from the Sentinel server; falls back to a small built-in simulation (e.g. on GitHub Pages).
+const seen = new Set();
+let offline = false;
+async function poll() {
+  try {
+    const r = await fetch("/api/alerts?limit=30", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const alerts = await r.json();
+    alerts.reverse().forEach((a) => { if (!seen.has(a.txn_id)) { seen.add(a.txn_id); addAlert(a); } });
+  } catch { offline = true; }
+}
+function simulate() {
+  const FAR_CC = { London: "GB", Tokyo: "JP", Sydney: "AU", "São Paulo": "BR", Mumbai: "IN", Lagos: "NG", Singapore: "SG", Moscow: "RU" };
+  const US_NAMES = ["Seattle", "New York", "Tampa", "San Francisco", "Denver", "Chicago", "Austin", "Atlanta"];
+  const us = CITIES.filter((c) => US_NAMES.includes(c[0])), far = CITIES.slice(0, 8);
+  const [h, la, lo] = us[Math.floor(Math.random() * us.length)];
+  const user = "u0" + (1000 + Math.floor(Math.random() * 9000));
+  if (Math.random() < 0.5) {
+    addAlert({ user_id: user, lat: la, lon: lo, city: h, country: "US", amount: 3, decision: "REVIEW", rules_fired: [] });
+    const [c, fl, fo] = far[Math.floor(Math.random() * far.length)];
+    setTimeout(() => addAlert({ user_id: user, lat: fl, lon: fo, city: c, country: FAR_CC[c] || "", amount: 120 + Math.random() * 600, decision: "BLOCK", rules_fired: ["impossible_travel"] }), 700);
+  } else addAlert({ user_id: user, lat: la, lon: lo, city: h, country: "US", amount: 900 + Math.random() * 900, decision: Math.random() < 0.5 ? "BLOCK" : "REVIEW", rules_fired: ["amount_spike"] });
+}
+await poll();
+setInterval(() => (offline ? simulate() : poll()), offline ? 2500 : 2000);
+if (offline) { simulate(); document.getElementById("how").insertAdjacentHTML("beforeend", "<br>Showing simulated alerts. Run Sentinel locally for live data."); }
+
+// ---------------------------------------------------------------- interaction
+let drag = null, spin = 0.12;
+renderer.domElement.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY }; });
+addEventListener("pointerup", () => { drag = null; });
+addEventListener("pointermove", (e) => {
+  if (!drag || renderer.xr.isPresenting) return;
+  globe.rotation.y += (e.clientX - drag.x) * 0.008;
+  globe.rotation.x = THREE.MathUtils.clamp(globe.rotation.x + (e.clientY - drag.y) * 0.006, -1, 1);
+  drag = { x: e.clientX, y: e.clientY };
+});
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+// ---------------------------------------------------------------- WebXR: place the globe on a real surface
+let hitSource = null, placed = false;
+const reticle = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
+document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ["hit-test"] }));
+renderer.xr.addEventListener("sessionstart", async () => {
+  const session = renderer.xr.getSession();
+  const viewer = await session.requestReferenceSpace("viewer");
+  hitSource = await session.requestHitTestSource({ space: viewer });
+  globe.visible = false; placed = false;
+  session.addEventListener("select", () => {
+    if (!reticle.visible) return;
+    globe.position.setFromMatrixPosition(reticle.matrix); globe.position.y += 0.18;
+    globe.scale.setScalar(0.15); globe.visible = true; placed = true;
+  });
+});
+renderer.xr.addEventListener("sessionend", () => {
+  hitSource = null; reticle.visible = false; globe.visible = true; globe.position.set(0, 0, 0); globe.scale.setScalar(1);
+});
+
+renderer.setAnimationLoop((t, frame) => {
+  const now = performance.now();
+  for (const it of live) {
+    const age = now - it.born;
+    if (it.tube) it.tube.geometry.setDrawRange(0, Math.floor(it.tube.geometry.index.count * Math.min(1, age / 1400)));
+    const fade = Math.max(0.2, 1 - age / 40000);
+    it.meshes.forEach((m) => { m.material.opacity = fade; });
+  }
+  if (!drag) globe.rotation.y += spin * 0.016;
+  if (frame && hitSource && !placed) {
+    const hits = frame.getHitTestResults(hitSource);
+    if (hits.length) { reticle.visible = true; reticle.matrix.fromArray(hits[0].getPose(renderer.xr.getReferenceSpace()).transform.matrix); }
+    else reticle.visible = false;
+  }
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

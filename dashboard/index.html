@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fraud Monitor</title>
+<title>Sentinel</title>
 <style>
   :root {
     --bg: #f6f7f9; --panel: #ffffff; --ink: #14171c; --muted: #646c78; --line: #e3e6ea;
@@ -70,6 +70,19 @@
            font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; }
   .toast.show { opacity: 1; }
   .empty { color: var(--muted); padding: 18px 8px; text-align: center; }
+  .ask form { display: flex; gap: 8px; }
+  .ask input { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; font-family: inherit; color: var(--ink); background: var(--bg);
+               border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; }
+  .ask .go { background: var(--accent); border-color: var(--accent); color: var(--panel); font-weight: 600; }
+  .ask .examples { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .ask .examples button { font-size: 12.5px; padding: 4px 10px; border-radius: 99px; }
+  .answer { margin-top: 10px; border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; display: grid; gap: 6px; max-width: 90ch; }
+  .answer[hidden] { display: none; }
+  .answer ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+  .answer .meta { font-size: 12px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .answer .quote { background: var(--bg); border-radius: 6px; padding: 7px 10px; font-size: 13.5px; }
+  #feed tr { cursor: pointer; }
+  #feed tr:hover td { background: var(--bg); }
   @media (max-width: 1000px) {
     .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .row { grid-template-columns: 1fr; }
@@ -83,7 +96,7 @@
 </head>
 <body>
 <header>
-  <h1>Fraud Monitor</h1>
+  <h1>Sentinel</h1>
   <span id="conn" class="pill"><span class="dot"></span><span id="connText">connecting</span></span>
   <span id="mode" class="pill"></span>
   <span class="spacer"></span>
@@ -91,6 +104,21 @@
 </header>
 
 <main>
+  <section class="panel ask" id="askPanel">
+    <h2>Ask Sentinel <span class="hint">plain English, or click any alert below</span></h2>
+    <form id="askForm" autocomplete="off">
+      <input id="askInput" type="text" placeholder="Why was the last transaction blocked?" aria-label="Ask Sentinel">
+      <button class="go" type="submit">Ask</button>
+    </form>
+    <div class="examples">
+      <button type="button" data-ask>Why was the last transaction blocked?</button>
+      <button type="button" data-ask>Simulate an account takeover</button>
+      <button type="button" data-ask>Show me fraud in Europe</button>
+      <button type="button" data-ask>Give me a summary</button>
+    </div>
+    <div class="answer" id="answer" hidden aria-live="polite"></div>
+  </section>
+
   <section class="kpis">
     <div class="kpi"><div class="label">Throughput</div><div class="value" id="kTps">–</div><div class="sub">txns / sec</div></div>
     <div class="kpi"><div class="label">Latency p99</div><div class="value" id="kP99">–</div><div class="sub" id="kP50">p50 –</div></div>
@@ -156,7 +184,7 @@
   const agg = { processed: 0, flagged: 0, blocked: 0, tp: 0, fp: 0, fn: 0, win: [] };
 
   $("mode").textContent = wsUrl ? "AWS · WebSocket" : "Local · SSE";
-  if (wsUrl) $("attackPanel").style.display = "none";
+  if (wsUrl) { $("attackPanel").style.display = "none"; $("askPanel").style.display = "none"; }
 
   // ---------------------------------------------------------------- connection
   function setConn(ok, text) {
@@ -255,8 +283,11 @@
       <td class="hide-sm">${esc(a.merchant_category).replace("_", " ")}</td>
       <td class="reasons">${(a.rules_fired || []).map(esc).join(", ") || "model"}</td>
       <td class="hide-sm">${truth}</td>`;
+    tr.title = "Ask why";
+    tr.addEventListener("click", () => ask(`Why was ${a.user_id} flagged?`));
     tbody.prepend(tr);
     rows++;
+    if (pendingUser && a.user_id === pendingUser) { pendingUser = null; setTimeout(() => ask(`Why was ${a.user_id} blocked?`), 600); }
     while (tbody.rows.length > MAX_ROWS) tbody.deleteRow(-1);
     $("feedCount").textContent = `${rows.toLocaleString()} received`;
   }
@@ -383,6 +414,28 @@
     });
     requestAnimationFrame(drawMap);
   }
+
+  // ---------------------------------------------------------------- assistant
+  let pendingUser = null;
+  async function ask(text) {
+    $("askInput").value = text;
+    const box = $("answer");
+    box.hidden = false; box.innerHTML = `<div class="meta">Thinking…</div>`;
+    try {
+      const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      const out = await r.json();
+      if (!r.ok) throw new Error(out.error || r.status);
+      if (out.attack) pendingUser = out.attack.user;
+      box.innerHTML = `<div><b>${esc(out.text)}</b></div>` +
+        (out.reasons ? `<ul>${out.reasons.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "") +
+        (out.next_step ? `<div class="quote">${esc(out.next_step)}</div>` : "") +
+        `<div class="meta">answered in ${out.ms} ms · understood by ${out.routed_by === "llm" ? "the language model" : "fast rules"}</div>`;
+    } catch (e) {
+      box.innerHTML = `<div>Sentinel couldn't answer: ${esc(e.message)}. Is the server still running?</div>`;
+    }
+  }
+  $("askForm").addEventListener("submit", (e) => { e.preventDefault(); const t = $("askInput").value.trim(); if (t) ask(t); });
+  document.querySelectorAll("[data-ask]").forEach((b) => b.addEventListener("click", () => ask(b.textContent.trim())));
 
   // ---------------------------------------------------------------- attacks
   document.querySelectorAll("[data-attack]").forEach((b) => b.addEventListener("click", async () => {

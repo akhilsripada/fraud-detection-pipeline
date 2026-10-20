@@ -6,3 +6,4 @@ ml/.cache/
 infra/cdk.out/
 .DS_Store
 *.log
+data/

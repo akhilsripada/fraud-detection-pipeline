@@ -187,15 +187,18 @@ class TransactionSimulator:
 
         self._schedule(self._txn(user, ts))
 
-    def inject_attack(self, kind: str | None = None) -> str:
+    def inject_attack(self, kind: str | None = None, time_scale: float = 0.0) -> str:
         """Start an attack on a random user right now (used by the demo's buttons)."""
         user = self.rng.choice(self.users)
-        self._spawn_attack(user, self.now, kind)
+        # Demo attacks are compressed so they land within seconds. Shorter gaps only make
+        # travel look more impossible, so this never makes detection easier to fake.
+        self._spawn_attack(user, self.now, kind, time_scale)
         return user.user_id
 
-    def _spawn_attack(self, user: User, ts: float, kind: str | None = None):
+    def _spawn_attack(self, user: User, ts: float, kind: str | None = None, time_scale: float = 1.0):
         """Attacks vary in how blatant they are, so detection is not trivial."""
         rng = self.rng
+        fast = time_scale < 1  # live demo: the whole attack lands within a few seconds
         kind = kind or rng.choice(ATTACKS)
         if kind not in ATTACKS:
             raise ValueError(f"unknown attack {kind!r}")
@@ -203,7 +206,7 @@ class TransactionSimulator:
             dev = self._device() if rng.random() < 0.7 else rng.choice(user.devices)
             t = ts
             for _ in range(rng.randint(3, 10)):
-                t += rng.uniform(3, 75)
+                t += rng.uniform(0.3, 1.2) if fast else rng.uniform(3, 75)
                 self._schedule(self._txn(user, t, amount=rng.uniform(0.5, 9.99), device=dev,
                                          category=rng.choice(["digital_goods", "gift_cards",
                                                               "retail"]),
@@ -213,7 +216,7 @@ class TransactionSimulator:
             far = self._far_city(user) if rng.random() < 0.6 else rng.choice(
                 [c for c in HOME_CITIES if haversine_km(c[2], c[3], user.location[2],
                                                         user.location[3]) > 1200])
-            self._schedule(self._txn(user, ts + rng.uniform(300, 5400), city=far,
+            self._schedule(self._txn(user, ts + (rng.uniform(2, 4) if fast else rng.uniform(300, 5400)), city=far,
                                      amount=user.mean_amount * rng.uniform(0.6, 5),
                                      device=rng.choice(user.devices),  # cloned card, POS
                                      label=1, fraud_type=kind))
@@ -227,7 +230,7 @@ class TransactionSimulator:
             dev = self._device()
             t = ts
             for _ in range(rng.randint(1, 3)):
-                t += rng.uniform(30, 900)
+                t += rng.uniform(0.5, 2) if fast else rng.uniform(30, 900)
                 self._schedule(self._txn(user, t, city=city, device=dev,
                                          amount=user.mean_amount * rng.uniform(1.5, 12),
                                          category=rng.choice(["gift_cards", "electronics",
