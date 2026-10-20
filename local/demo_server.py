@@ -206,8 +206,14 @@ def make_handler(engine: Engine, hub: Hub, assistant: Assistant):
         def _json(self, code, obj):
             self._send(code, json.dumps(obj).encode())
 
+        def _body(self) -> bytes:
+            # Always consume the request body: with keep-alive, unread bytes would corrupt the next request.
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            return self.rfile.read(min(n, 4096)) if n else b""
+
         def do_POST(self):
             url = urlparse(self.path)
+            raw = self._body()
             if url.path == "/api/attack":
                 kind = parse_qs(url.query).get("type", [""])[0]
                 if kind not in ATTACKS:
@@ -217,8 +223,7 @@ def make_handler(engine: Engine, hub: Hub, assistant: Assistant):
                 return self._send(202, json.dumps({"queued": kind}).encode())
             if url.path == "/api/ask":
                 try:
-                    n = int(self.headers.get("Content-Length", 0))
-                    text = str(json.loads(self.rfile.read(min(n, 4096)) or b"{}").get("text", "")).strip()
+                    text = str(json.loads(raw or b"{}").get("text", "")).strip()
                 except (ValueError, AttributeError):
                     return self._json(400, {"error": 'send JSON like {"text": "give me a summary"}'})
                 if not text:

@@ -89,6 +89,16 @@ class LiveServerTests(unittest.TestCase):
             with urllib.request.urlopen(self.base + path, timeout=5) as r:
                 self.assertIn(b"<html", r.read())
 
+    def test_keep_alive_connection_survives_a_post_with_a_body(self):
+        import http.client
+        c = http.client.HTTPConnection(self.base.split("//")[1], timeout=5)
+        c.request("POST", "/api/attack?type=amount_spike", body=b"{}", headers={"Content-Type": "application/json"})
+        c.getresponse().read()
+        c.request("POST", "/api/ask", body=json.dumps({"text": "give me a summary"}), headers={"Content-Type": "application/json"})
+        r = c.getresponse()
+        self.assertEqual(r.status, 200)
+        self.assertIn("Scored", json.loads(r.read())["text"])
+
     def test_mcp_round_trip(self):
         import sentinel_mcp
         sentinel_mcp.BASE = self.base
