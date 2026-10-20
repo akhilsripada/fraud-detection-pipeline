@@ -32,6 +32,66 @@
 import * as THREE from "three";
 import { ARButton } from "three/addons/webxr/ARButton.js";
 
+// ---------------------------------------------------------------- iPhone / iPad: AR Quick Look
+// Safari has no WebXR AR, but iOS has its own AR viewer (Quick Look) that opens USDZ models.
+// "View in your room" exports a snapshot of the current scene to USDZ and hands it to Quick Look.
+// USDZ only carries meshes with standard materials, so lights, lines and sprites are converted first.
+const canQuickLook = (() => { try { return document.createElement("a").relList.supports("ar"); } catch { return false; } })();
+function quickLookSafe(root) {
+  const out = root.clone(true), drop = [], sprites = [];
+  out.traverse((o) => {
+    if (o.isLight || o.isLine || o.isPoints) drop.push(o);
+    else if (o.isSprite) sprites.push(o);
+    else if (o.isMesh && !o.material.isMeshStandardMaterial) {
+      const m = o.material, c = m.color ? m.color.clone() : new THREE.Color(0xffffff);
+      o.material = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6, map: m.map || null,
+        transparent: !!m.transparent, opacity: m.opacity ?? 1, side: m.side });
+    }
+  });
+  for (const s of sprites) {             // labels become flat signs facing the viewer
+    const map = s.material.map;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map, emissive: 0xffffff, emissiveMap: map, transparent: true }));
+    sign.position.copy(s.position); sign.scale.set(s.scale.x, s.scale.y, 1);
+    s.parent.add(sign); drop.push(s);
+  }
+  drop.forEach((o) => o.parent && o.parent.remove(o));
+  return out;
+}
+async function exportUSDZ(model) {
+  const { USDZExporter } = await import("three/addons/exporters/USDZExporter.js");
+  const exporter = new USDZExporter();
+  // three.js has had both a promise-returning parse() and a callback parse() + parseAsync(); support either.
+  return exporter.parseAsync ? exporter.parseAsync(model)
+    : new Promise((resolve, reject) => { const r = exporter.parse(model, resolve, reject); if (r && r.then) r.then(resolve, reject); });
+}
+async function openQuickLook(model, name) {
+  const data = await exportUSDZ(model);
+  const url = URL.createObjectURL(new Blob([data], { type: "model/vnd.usdz+zip" }));
+  const a = document.createElement("a");
+  a.rel = "ar"; a.href = url; a.download = name + ".usdz";
+  a.appendChild(document.createElement("img"));      // Quick Look only opens links that contain an image
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+}
+function quickLookButton(label, makeModel, name) {
+  const b = document.createElement("button");
+  b.textContent = label; b.className = "ql";
+  b.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));z-index:3;" +
+    "font:600 15px system-ui,sans-serif;padding:12px 18px;border-radius:99px;border:0;background:#fff;color:#111;box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer";
+  b.hidden = !canQuickLook;
+  b.addEventListener("click", async () => {
+    b.disabled = true; const t = b.textContent; b.textContent = "Preparing 3D model…";
+    try { await openQuickLook(makeModel(), name); } catch (e) { b.textContent = "Couldn't build the model"; console.error(e); setTimeout(() => { b.textContent = t; }, 2500); return; }
+    finally { b.disabled = false; }
+    b.textContent = t;
+  });
+  document.body.appendChild(b);
+  // for automated checks: build the USDZ and report its size and contents without opening anything
+  window.__usdzCheck = async () => { const d = await exportUSDZ(makeModel()); const head = String.fromCharCode(d[0], d[1]);
+    return { bytes: d.length, zip: head === "PK", hasUsda: new TextDecoder().decode(d.slice(0, 400)).includes(".usda") }; };
+  if (canQuickLook) { const how = document.getElementById("how") || document.getElementById("mode"); if (how) how.insertAdjacentHTML("beforeend", "<br>On iPhone, tap <b>View in your room</b> for a 3D snapshot in your camera."); }
+}
+
 const LAND = [[[-165,65],[-160,71],[-140,70],[-125,70],[-110,73],[-95,72],[-82,73],[-70,67],[-62,60],[-56,52],[-64,47],[-70,43],[-74,40],[-76,35],[-81,31],[-80,25],[-82,28],[-85,30],[-90,29],[-94,29],[-97,26],[-97,21],[-95,19],[-91,19],[-87,21],[-88,16],[-84,15],[-83,10],[-79,9],[-77,8],[-80,7],[-83,8],[-86,12],[-92,15],[-96,16],[-105,20],[-106,23],[-110,23],[-112,29],[-115,32],[-117,32],[-120,34],[-123,38],[-124,42],[-124,48],[-128,51],[-134,57],[-140,60],[-150,61],[-155,58],[-162,58],[-165,62]],[[-55,60],[-45,60],[-40,65],[-22,70],[-20,77],[-30,83],[-55,82],[-70,78],[-60,76],[-55,70]],[[-77,8],[-72,12],[-63,11],[-55,6],[-50,2],[-48,-1],[-40,-3],[-35,-6],[-35,-9],[-39,-14],[-40,-22],[-48,-26],[-53,-33],[-58,-38],[-62,-40],[-65,-45],[-68,-50],[-69,-55],[-74,-53],[-75,-45],[-73,-37],[-71,-30],[-70,-18],[-76,-14],[-81,-6],[-80,-1],[-78,2],[-78,7]],[[-9,43],[-9,39],[-6,36],[-2,37],[0,39],[3,43],[8,44],[12,42],[16,38],[18,40],[13,45],[19,42],[22,37],[26,40],[29,41],[36,36],[35,33],[34,28],[39,20],[43,13],[45,13],[52,16],[57,19],[59,22],[56,26],[51,24],[48,29],[52,27],[57,25],[62,25],[67,24],[70,21],[73,17],[77,8],[80,13],[80,16],[87,21],[92,22],[94,17],[98,16],[98,8],[101,3],[104,1],[100,7],[101,13],[105,9],[109,12],[108,17],[106,20],[110,21],[117,23],[121,29],[122,31],[119,35],[122,37],[118,39],[122,40],[125,40],[127,35],[129,35],[130,42],[135,44],[141,48],[140,54],[136,55],[143,59],[155,59],[163,62],[178,65],[180,69],[160,70],[140,72],[120,73],[105,78],[95,76],[80,73],[70,73],[60,70],[45,68],[40,66],[33,70],[25,71],[15,68],[5,62],[5,58],[10,59],[11,55],[8,57],[8,54],[5,53],[2,51],[-2,48],[-5,48],[-1,45],[-2,43]],[[-5,50],[1,51],[2,53],[0,54],[-2,56],[-3,58],[-5,58],[-6,56],[-3,54],[-4,53],[-5,52]],[[-17,15],[-17,21],[-13,27],[-10,30],[-6,36],[0,36],[10,37],[11,33],[20,31],[25,32],[32,31],[34,28],[39,21],[43,12],[51,12],[51,10],[48,5],[41,-1],[39,-5],[40,-11],[40,-16],[35,-20],[35,-24],[33,-27],[31,-30],[27,-34],[20,-35],[18,-32],[15,-27],[12,-18],[13,-12],[12,-5],[9,-1],[9,4],[5,5],[-2,5],[-8,4],[-13,8],[-17,13]],[[44,-25],[47,-25],[50,-15],[49,-12],[44,-17]],[[130,31],[132,34],[135,34],[140,35],[141,38],[142,41],[140,41],[140,38],[136,37],[132,35]],[[95,5],[98,4],[106,-6],[104,-6],[100,-2]],[[109,1],[111,-3],[116,-4],[119,1],[117,7],[113,3]],[[105,-6],[114,-7],[114,-8],[106,-7]],[[131,-1],[141,-3],[150,-10],[143,-9],[138,-8]],[[114,-22],[114,-34],[118,-35],[124,-33],[131,-31],[136,-35],[138,-34],[140,-38],[146,-39],[150,-37],[153,-32],[153,-25],[146,-19],[145,-15],[142,-11],[141,-17],[136,-12],[131,-12],[126,-14],[122,-18]],[[172,-35],[178,-38],[175,-41],[171,-44],[167,-46],[170,-42]]];
 const CITIES = [["London",51.51,-0.13],["Tokyo",35.68,139.69],["Sydney",-33.87,151.21],["São Paulo",-23.55,-46.63],["Mumbai",19.08,72.88],["Lagos",6.52,3.38],["Singapore",1.35,103.82],["Moscow",55.76,37.62],["Seattle",47.61,-122.33],["New York",40.71,-74.01],["Tampa",27.95,-82.46],["Mexico City",19.43,-99.13],["San Francisco",37.77,-122.42],["Denver",39.74,-104.99],["Chicago",41.88,-87.63],["Austin",30.27,-97.74],["Atlanta",33.75,-84.39],["Toronto",43.65,-79.38],["Paris",48.86,2.35],["Berlin",52.52,13.4],["Bucharest",44.43,26.1],["Hyderabad",17.39,78.49]];
 const R = 1;
@@ -154,6 +214,31 @@ renderer.xr.addEventListener("sessionstart", async () => {
 renderer.xr.addEventListener("sessionend", () => {
   hitSource = null; reticle.visible = false; globe.visible = true; globe.position.set(0, 0, 0); globe.scale.setScalar(1);
 });
+
+
+// iPhone model: the globe as it is right now, with continents painted onto it and live alert arcs, 30 cm across.
+function landTexture() {
+  const W = 2048, H = 1024, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  g.fillStyle = "#18202a"; g.fillRect(0, 0, W, H);
+  // Sphere UVs start at longitude -90, so x = (lon + 90) / 360; draw twice to cover the seam.
+  const X = (lon) => (lon + 90) / 360 * W, Y = (lat) => (90 - lat) / 180 * H;
+  g.fillStyle = "#3a4553"; g.strokeStyle = "#5b6878"; g.lineWidth = 3;
+  for (const shift of [0, W]) for (const ring of LAND) {
+    g.beginPath(); ring.forEach(([lo, la], i) => (i ? g.lineTo(X(lo) + shift, Y(la)) : g.moveTo(X(lo) + shift, Y(la)))); g.closePath(); g.fill(); g.stroke();
+  }
+  g.fillStyle = "#8b95a1";
+  for (const shift of [0, W]) for (const [, la, lo] of CITIES) { g.beginPath(); g.arc(X(lo) + shift, Y(la), 5, 0, 7); g.fill(); }
+  return new THREE.CanvasTexture(c);
+}
+function globeModel() {
+  const g = quickLookSafe(globe);
+  g.rotation.set(0, 0, 0);
+  g.traverse((o) => { if (o.isMesh && o.geometry.type === "SphereGeometry" && o.geometry.parameters.radius === R) o.material = new THREE.MeshStandardMaterial({ map: landTexture(), roughness: 0.9 }); });
+  const root = new THREE.Group(); g.scale.setScalar(0.15); g.position.y = 0.17; root.add(g);
+  return root;
+}
+quickLookButton("View in your room", globeModel, "sentinel-globe");
 
 renderer.setAnimationLoop((t, frame) => {
   const now = performance.now();
