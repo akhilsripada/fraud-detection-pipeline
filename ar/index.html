@@ -199,7 +199,9 @@ addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; cam
 let hitSource = null, placed = false;
 const reticle = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
 reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
-document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ["hit-test"] }));
+// Only offer "Start AR" where WebXR exists (Android Chrome). Elsewhere three.js would show a
+// "WebXR needed" link to immersiveweb.dev, which on iPhone covered the "View in your room" button.
+if ("xr" in navigator) document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ["hit-test"] }));
 renderer.xr.addEventListener("sessionstart", async () => {
   const session = renderer.xr.getSession();
   const viewer = await session.requestReferenceSpace("viewer");
