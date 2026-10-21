@@ -3,7 +3,7 @@ name: Live demo
 on:
   push:
     branches: [main]
-    paths: ["site/**", "ar/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "ar/**", "dashboard/customer.html", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
