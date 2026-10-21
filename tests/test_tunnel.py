@@ -25,6 +25,9 @@ class TunnelTests(unittest.TestCase):
                          "https://quiet-river-ab12.trycloudflare.com")
         self.assertEqual(tunnel.find_url("3f2a.lhr.life tunneled with tls termination, https://3f2a9c.lhr.life", "ssh"),
                          "https://3f2a9c.lhr.life")
+        self.assertEqual(tunnel.find_url('{"event":"tcpip-forward","address":"9d1f7a2b3c4d5e.lhr.life","message":"..."}', "ssh"),
+                         "https://9d1f7a2b3c4d5e.lhr.life")
+        self.assertIsNone(tunnel.find_url("To set up custom domains, add an ssh key at https://admin.localhost.run/", "ssh"))
         self.assertIsNone(tunnel.find_url("connecting...", "ssh"))
 
     def test_uses_cloudflared_first_and_returns_its_link(self):

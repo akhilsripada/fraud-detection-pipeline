@@ -23,9 +23,13 @@ import time
 PROVIDERS = {
     "cloudflared": (re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com"),
                     lambda port: ["cloudflared", "tunnel", "--no-autoupdate", "--url", f"http://localhost:{port}"]),
-    "ssh": (re.compile(r"https://[a-z0-9-]+\.(?:lhr\.life|localhost\.run)"),
+    # localhost.run's banner advertises paid custom domains (and links admin.localhost.run, which is not
+    # the tunnel); the free link is always <random>.lhr.life and needs no key. "--output json"
+    # makes it print the link as {"address": "abc123.lhr.life", ...} instead of in a human banner.
+    "ssh": (re.compile(r"https://[a-z0-9-]+\.lhr\.life|\"address\"\s*:\s*\"([a-z0-9-]+\.lhr\.life)\""),
             lambda port: ["ssh", "-T", "-o", "StrictHostKeyChecking=accept-new", "-o", "ServerAliveInterval=30",
-                          "-o", "ExitOnForwardFailure=yes", "-R", f"80:localhost:{port}", "nokey@localhost.run"]),
+                          "-o", "ExitOnForwardFailure=yes", "-R", f"80:localhost:{port}", "nokey@localhost.run",
+                          "--", "--output", "json"]),
 }
 
 
@@ -35,7 +39,10 @@ def available() -> list[str]:
 
 def find_url(text: str, provider: str) -> str | None:
     m = PROVIDERS[provider][0].search(text)
-    return m.group(0) if m else None
+    if not m:
+        return None
+    host = m.group(1) if m.lastindex else None
+    return f"https://{host}" if host else m.group(0)
 
 
 def start(port: int, timeout: float = 30.0, popen=subprocess.Popen) -> tuple[subprocess.Popen, str, str]:
