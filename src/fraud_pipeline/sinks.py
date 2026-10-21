@@ -62,11 +62,15 @@ class JsonlSink:
 # ----------------------------------------------------------------------------- AWS
 
 class DynamoAlertSink:
-    """Writes flagged transactions to the alerts table exactly once.
+    """Writes each flagged transaction to the alerts table once, however often it is redelivered.
 
     The conditional put on txn_id is the idempotency key: Kinesis delivers
     at-least-once, so a retried batch must not create duplicate alerts or
     re-page anyone. Downstream sinks only fire for *new* alerts.
+
+    Known trade-off: if the put succeeds and a downstream publish then fails, the retry sees the
+    alert already stored and skips the page (at-most-once paging). The fix at scale is an outbox:
+    publish from the table's DynamoDB Stream instead of inline.
     """
 
     def __init__(self, table, downstream: list | None = None, ttl_days: int = 30):

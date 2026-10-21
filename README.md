@@ -18,7 +18,7 @@ It runs two ways from the same code: on your laptop with one command, or serverl
 | **Model** | Gradient-boosted trees, PR-AUC **0.938** (vs 0.802 for a logistic-regression baseline) |
 | **Scoring cost** | **6,600+ txns/sec on one CPU core**, p99 **0.27 ms** per transaction |
 | **Assistant** | Answers in **under 1 ms** for known questions; an optional LLM only routes free-form ones |
-| **Reliability** | Exactly-once alerts on an at-least-once stream, in-order retries, DLQ with replay |
+| **Reliability** | No duplicate alerts on an at-least-once stream, in-order retries, DLQ with replay |
 | **Dependencies** | **None** to run it. Python 3.11+ standard library only |
 
 ## Run it in one command
@@ -153,7 +153,7 @@ Performance ([`loadtest/results.md`](loadtest/results.md)):
 
 **PR-AUC, not ROC-AUC.** With about 1% fraud, ROC-AUC is above 0.99 for most models and hides false positives. Precision and recall are what a fraud team pays for.
 
-**Exactly-once effects on an at-least-once stream.** Kinesis and Lambda can deliver a record more than once. Three mechanisms make retries safe:
+**Duplicate-free effects on an at-least-once stream.** Kinesis and Lambda can deliver a record more than once. Three mechanisms make retries safe:
 - Per-user state keeps the last 64 `txn_id`s, so a redelivered record is skipped.
 - Alerts use a DynamoDB conditional put on `txn_id`, so a retry can't create a second alert or page anyone twice.
 - State is committed *last*, so a failure mid-way leaves no partial update.

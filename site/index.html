@@ -296,7 +296,7 @@
           <a class="btn" href="https://github.com/akhilsripada/fraud-detection-pipeline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>View the code</a>
         </div>
         <dl class="proof">
-          <div><dt>of declines were real fraud</dt><dd>94%</dd></div>
+          <div><dt>precision on held-out test data</dt><dd>94%</dd></div>
           <div><dt>p99 to score a swipe</dt><dd>0.27 ms</dd></div>
           <div><dt>swipes per second, one core</dt><dd>6,600</dd></div>
         </dl>
@@ -371,7 +371,7 @@
         <li><h3>Profile lookup</h3><p>The card's history: usual spend, last location, known devices and countries, recent charges.</p><span class="ms">DynamoDB, optimistic locking</span></li>
         <li><h3>Features</h3><p>Fifteen signals, like distance from the last swipe, travel speed, charges in the last minute, and spend versus normal.</p><span class="ms">streaming, O(1) per event</span></li>
         <li><h3>Model and rules</h3><p>Gradient-boosted trees score the risk. Rules add plain-English reasons and hard overrides, such as impossible travel.</p><span class="ms">0.27 ms at p99</span></li>
-        <li><h3>Decision and alert</h3><p>Approve, hold or decline. A decline texts the cardholder “was this you?”, and their answer freezes the card or clears it.</p><span class="ms">exactly-once alerts</span></li>
+        <li><h3>Decision and alert</h3><p>Approve, hold or decline. A decline texts the cardholder “was this you?”, and their answer freezes the card or clears it.</p><span class="ms">no duplicate alerts</span></li>
       </ol>
     </div>
   </section>
@@ -381,12 +381,12 @@
       <div>
         <div class="sec-head"><h2>Measured, not promised</h2></div>
         <table>
-          <tr><th>Precision</th><td><b>94.0%</b><span>of flagged transactions were fraud, on held-out data</span></td></tr>
+          <tr><th>Precision</th><td><b>94.0%</b><span>of flagged transactions were fraud, on held-out simulated data</span></td></tr>
           <tr><th>Recall</th><td><b>87.5%</b><span>of fraud was caught</span></td></tr>
           <tr><th>False alarms</th><td><b>0.06%</b><span>of genuine purchases flagged</span></td></tr>
           <tr><th>Model quality</th><td><b>PR-AUC 0.938</b><span>versus 0.802 for a logistic-regression baseline</span></td></tr>
           <tr><th>Throughput</th><td><b>6,600+ per second</b><span>on a single CPU core, p99 0.27 ms per transaction</span></td></tr>
-          <tr><th>Reliability</th><td><b>Exactly-once alerts</b><span>on an at-least-once stream, with ordered retries and a dead-letter queue with replay</span></td></tr>
+          <tr><th>Reliability</th><td><b>No duplicate alerts</b><span>on an at-least-once stream: a retried batch can't create a second alert. Ordered retries and a dead-letter queue with replay</span></td></tr>
         </table>
       </div>
       <div class="stack">
