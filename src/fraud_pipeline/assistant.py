@@ -1,4 +1,4 @@
-"""Sentinel assistant: answers plain-English questions about the live stream.
+"""Swipestop assistant: answers plain-English questions about the live stream.
 
 Design rule: **the language model routes, the code answers.**
 

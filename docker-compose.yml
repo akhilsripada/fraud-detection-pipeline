@@ -1,11 +1,11 @@
 # docker compose up   ->  http://localhost:8000
 services:
-  sentinel:
+  swipestop:
     build: .
     ports: ["8000:8000"]
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}   # optional: free-form questions
-    volumes: ["sentinel-data:/app/data"]    # alerts survive restarts
+    volumes: ["swipestop-data:/app/data"]    # alerts survive restarts
     restart: unless-stopped
 volumes:
-  sentinel-data:
+  swipestop-data:

@@ -101,28 +101,28 @@ class LiveServerTests(unittest.TestCase):
         self.assertIn("Scored", json.loads(r.read())["text"])
 
     def test_mcp_round_trip(self):
-        import sentinel_mcp
-        sentinel_mcp.BASE = self.base
-        init = sentinel_mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+        import swipestop_mcp
+        swipestop_mcp.BASE = self.base
+        init = swipestop_mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize",
                                     "params": {"protocolVersion": "2025-06-18", "capabilities": {}}})
-        self.assertEqual(init["result"]["serverInfo"]["name"], "sentinel")
-        self.assertIsNone(sentinel_mcp.handle({"jsonrpc": "2.0", "method": "notifications/initialized"}))
-        tools = sentinel_mcp.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]["tools"]
+        self.assertEqual(init["result"]["serverInfo"]["name"], "swipestop")
+        self.assertIsNone(swipestop_mcp.handle({"jsonrpc": "2.0", "method": "notifications/initialized"}))
+        tools = swipestop_mcp.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]["tools"]
         self.assertEqual({t["name"] for t in tools},
-                         {"ask_sentinel", "recent_alerts", "fraud_stats", "simulate_attack", "cardholder_alert"})
-        out = sentinel_mcp.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
-                                   "params": {"name": "ask_sentinel", "arguments": {"question": "give me a summary"}}})
+                         {"ask_swipestop", "recent_alerts", "fraud_stats", "simulate_attack", "cardholder_alert"})
+        out = swipestop_mcp.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                                   "params": {"name": "ask_swipestop", "arguments": {"question": "give me a summary"}}})
         text = out["result"]["content"][0]["text"]
         self.assertIn("Scored", text)
         self.assertIn("Live dashboard:", text)
-        bad = sentinel_mcp.handle({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "nope"}})
+        bad = swipestop_mcp.handle({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "nope"}})
         self.assertTrue(bad["result"]["isError"])
-        self.assertEqual(sentinel_mcp.handle({"jsonrpc": "2.0", "id": 5, "method": "x"})["error"]["code"], -32601)
+        self.assertEqual(swipestop_mcp.handle({"jsonrpc": "2.0", "id": 5, "method": "x"})["error"]["code"], -32601)
 
 
     def test_cardholder_alert_flow(self):
-        import sentinel_mcp
-        sentinel_mcp.BASE = self.base
+        import swipestop_mcp
+        swipestop_mcp.BASE = self.base
         alert = self.get("/api/alerts?limit=1")[0]
         tid = alert["txn_id"]
         ctx = self.get(f"/api/alerts/{tid}/context")
@@ -136,7 +136,7 @@ class LiveServerTests(unittest.TestCase):
         self.assertEqual((out["status"], out["frozen"]), ("recorded", True))
         self.assertTrue(self.get(f"/api/alerts/{tid}/context")["card"]["frozen"])
         self.assertIn(tid, [f["txn_id"] for f in self.get("/api/feedback")])
-        text = sentinel_mcp.call_tool("cardholder_alert", {"txn_id": tid[:8]})
+        text = swipestop_mcp.call_tool("cardholder_alert", {"txn_id": tid[:8]})
         self.assertIn("card frozen by the cardholder", text)
         self.assertIn(f"/customer/{tid}", text)
         self.assertFalse(self.post(f"/api/cards/{alert['user_id']}/unfreeze", {})["frozen"])
@@ -147,13 +147,13 @@ class LiveServerTests(unittest.TestCase):
 
 class McpOfflineTests(unittest.TestCase):
     def test_unreachable_server_is_a_clear_error(self):
-        import sentinel_mcp
-        old, sentinel_mcp.BASE = sentinel_mcp.BASE, f"http://127.0.0.1:{free_port()}"
+        import swipestop_mcp
+        old, swipestop_mcp.BASE = swipestop_mcp.BASE, f"http://127.0.0.1:{free_port()}"
         try:
-            out = sentinel_mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            out = swipestop_mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                                        "params": {"name": "fraud_stats", "arguments": {}}})
         finally:
-            sentinel_mcp.BASE = old
+            swipestop_mcp.BASE = old
         self.assertTrue(out["result"]["isError"])
         self.assertIn("python run.py", out["result"]["content"][0]["text"])
 

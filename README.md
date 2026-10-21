@@ -1,10 +1,10 @@
-# Sentinel: Real-Time Fraud Detection You Can Talk To
+# Swipestop: Real-Time Fraud Detection You Can Talk To
 
 [![CI](https://github.com/akhilsripada/fraud-detection-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/akhilsripada/fraud-detection-pipeline/actions/workflows/ci.yml)
 [![Live demo](https://img.shields.io/badge/live%20demo-open-c93a31)](https://akhilsripada.github.io/fraud-detection-pipeline/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Sentinel scores card transactions for fraud **as they stream in**, blocks the suspicious ones in well under a millisecond, and **explains every decision in plain English**. Ask it *"why was u01037 blocked?"* on the dashboard, from Claude or ChatGPT through its MCP server, or watch attacks land on an **AR globe** on your desk.
+Swipestop scores card transactions for fraud **as they stream in**, blocks the suspicious ones in well under a millisecond, and **explains every decision in plain English**. Ask it *"why was u01037 blocked?"* on the dashboard, from Claude or ChatGPT through its MCP server, or watch attacks land on an **AR globe** on your desk.
 
 When it blocks a purchase, the **cardholder** gets a *"Was this you?"* alert. It shows exactly where and when the purchase happened, including the store, its coordinates, and the local time there next to yours. Tap **Show me where** and the phone's camera puts a pin in the real direction of the store, using GPS and the compass. **"No, freeze my card"** blocks everything after it, and both answers are saved as labelled training data.
 
@@ -29,26 +29,26 @@ cd fraud-detection-pipeline
 python run.py
 ```
 
-Your browser opens the live dashboard at http://localhost:8000. Type *"simulate an account takeover"* in **Ask Sentinel** and watch it get caught and explained. With Docker instead: `docker compose up`.
+Your browser opens the live dashboard at http://localhost:8000. Type *"simulate an account takeover"* in **Ask Swipestop** and watch it get caught and explained. With Docker instead: `docker compose up`.
 
 ## Talk to it
 
 | Where | How |
 |---|---|
-| **Dashboard** | Type a question in **Ask Sentinel**, or click any alert to ask why it was flagged. |
+| **Dashboard** | Type a question in **Ask Swipestop**, or click any alert to ask why it was flagged. |
 | **Claude, ChatGPT, Cursor** | Add the MCP server (below), then ask *"what fraud happened in Europe today?"* |
 | **HTTP API** | `curl -X POST localhost:8000/api/ask -d '{"text":"give me a summary"}'` |
 | **AR** | Open `/ar` on an Android phone with Chrome, tap **Start AR**, and place the globe on a table. Run `python run.py --host 0.0.0.0` so your phone can reach your laptop. iPhone Safari doesn't support WebXR AR yet, so it shows the 3D globe instead. |
 
 Questions it understands: *why was u01037 blocked?* · *why was the last transaction blocked?* · *simulate impossible travel* · *show me fraud in Asia* · *give me a summary* · *show all*. Set `GEMINI_API_KEY` (Google's free tier works) to also handle free-form questions like *"anything weird happening in the far east?"*.
 
-**MCP setup (Claude Desktop):** add this to `claude_desktop_config.json`, with Sentinel running:
+**MCP setup (Claude Desktop):** add this to `claude_desktop_config.json`, with Swipestop running:
 
 ```json
-{"mcpServers": {"sentinel": {"command": "python3", "args": ["/full/path/to/fraud-detection-pipeline/mcp/sentinel_mcp.py"]}}}
+{"mcpServers": {"swipestop": {"command": "python3", "args": ["/full/path/to/fraud-detection-pipeline/mcp/swipestop_mcp.py"]}}}
 ```
 
-Tools: `ask_sentinel`, `recent_alerts`, `fraud_stats`, `simulate_attack`, `cardholder_alert`. Every answer ends with a link to the live dashboard.
+Tools: `ask_swipestop`, `recent_alerts`, `fraud_stats`, `simulate_attack`, `cardholder_alert`. Every answer ends with a link to the live dashboard.
 
 ## The cardholder's side: "Was this you?"
 
@@ -191,9 +191,9 @@ src/fraud_pipeline/      # deployed to Lambda as-is (no third-party deps)
 ml/train.py              # simulate -> featurize -> train -> verify export -> report
 run.py                   # one-command start: server + dashboard + browser
 local/demo_server.py     # pipeline, dashboard, assistant and HTTP API, standard library only
-dashboard/index.html     # live dashboard with Ask Sentinel (SSE locally, WebSocket on AWS)
+dashboard/index.html     # live dashboard with Ask Swipestop (SSE locally, WebSocket on AWS)
 dashboard/customer.html  # cardholder alert: "was this you?", map, camera + compass "show me where"
-mcp/sentinel_mcp.py      # MCP server so AI assistants can query the live stream
+mcp/swipestop_mcp.py      # MCP server so AI assistants can query the live stream
 ar/index.html            # three.js globe with WebXR placement on real surfaces
 site/index.html          # browser-only demo published to GitHub Pages
 infra/                   # AWS CDK app (Python)

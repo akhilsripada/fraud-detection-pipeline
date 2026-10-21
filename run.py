@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start Sentinel with one command and open the dashboard.
+"""Start Swipestop with one command and open the dashboard.
 
     python run.py                # dashboard at http://localhost:8000
     python run.py --port 8080 --no-browser
@@ -38,13 +38,13 @@ def main():
     ap.add_argument("--no-browser", action="store_true")
     args, extra = ap.parse_known_args()
     if sys.version_info < (3, 11):
-        sys.exit(f"Sentinel needs Python 3.11 or newer; this is {sys.version.split()[0]}.")
+        sys.exit(f"Swipestop needs Python 3.11 or newer; this is {sys.version.split()[0]}.")
     cmd = [sys.executable, str(ROOT / "local" / "demo_server.py"), "--port", str(args.port), "--host", args.host, *extra]
     proc = subprocess.Popen(cmd)
     try:
         if wait_for(args.port, proc):
             url = f"http://localhost:{args.port}"
-            print(f"\n  Sentinel is running:\n    dashboard  {url}\n    AR globe   {url}/ar\n    API        {url}/api/stats\n")
+            print(f"\n  Swipestop is running:\n    dashboard  {url}\n    AR globe   {url}/ar\n    API        {url}/api/stats\n")
             if not args.no_browser:
                 webbrowser.open(url)
         proc.wait()

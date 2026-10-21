@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sentinel console</title>
+<title>Swipestop console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500&display=swap">
@@ -103,7 +103,7 @@
 </head>
 <body>
 <header>
-  <h1 class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</h1>
+  <h1 class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Swipestop</h1>
   <span id="conn" class="pill"><span class="dot"></span><span id="connText">connecting</span></span>
   <span id="mode" class="pill"></span>
   <span class="spacer"></span>
@@ -112,9 +112,9 @@
 
 <main>
   <section class="panel ask" id="askPanel">
-    <h2>Ask Sentinel <span class="hint">plain English, or click any alert below</span></h2>
+    <h2>Ask Swipestop <span class="hint">plain English, or click any alert below</span></h2>
     <form id="askForm" autocomplete="off">
-      <input id="askInput" type="text" placeholder="Why was the last transaction blocked?" aria-label="Ask Sentinel">
+      <input id="askInput" type="text" placeholder="Why was the last transaction blocked?" aria-label="Ask Swipestop">
       <button class="go" type="submit">Ask</button>
     </form>
     <div class="examples">
@@ -439,7 +439,7 @@
         (out.next_step ? `<div class="quote">${esc(out.next_step)}</div>` : "") +
         `<div class="meta">answered in ${out.ms} ms · understood by ${out.routed_by === "llm" ? "the language model" : "fast rules"}</div>`;
     } catch (e) {
-      box.innerHTML = `<div>Sentinel couldn't answer: ${esc(e.message)}. Is the server still running?</div>`;
+      box.innerHTML = `<div>Swipestop couldn't answer: ${esc(e.message)}. Is the server still running?</div>`;
     }
   }
   $("askForm").addEventListener("submit", (e) => { e.preventDefault(); const t = $("askInput").value.trim(); if (t) ask(t); });

@@ -105,7 +105,7 @@
 </head>
 <body>
 <main id="app">
-  <div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</b><span>card alert</span><span class="spacer"></span><span id="mode"></span></div>
+  <div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Swipestop</b><span>card alert</span><span class="spacer"></span><span id="mode"></span></div>
   <div class="card"><p class="muted">Loading the alert…</p></div>
 </main>
 
@@ -179,11 +179,11 @@ async function picker() {
   let alerts = [];
   try { alerts = await (await fetch("/api/alerts?limit=12", { cache: "no-store" })).json(); }
   catch {                                   // static demo site: no server to list alerts from
-    $("app").innerHTML = `<div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</b><span>card alert</span></div><div class="card"><h1>No alert selected</h1>
+    $("app").innerHTML = `<div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Swipestop</b><span>card alert</span></div><div class="card"><h1>No alert selected</h1>
       <p class="muted">Open the <a href="./">live demo</a>, ask <i>“why was the last transaction blocked?”</i>, and follow the cardholder alert link.</p></div>`;
     return;
   }
-  $("app").innerHTML = `<div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</b><span>card alerts</span></div><div class="card picker"><h2>Recent alerts</h2>${
+  $("app").innerHTML = `<div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Swipestop</b><span>card alerts</span></div><div class="card picker"><h2>Recent alerts</h2>${
     alerts.length ? alerts.map((a) => `<a href="/customer/${encodeURIComponent(a.txn_id)}"><span>${esc(a.user_id)} · ${esc(a.city)}, ${esc(a.country)}</span>
       <span><b>${money(a.amount)}</b> <span class="pill ${esc(a.decision)}">${a.decision === "BLOCK" ? "Blocked" : "Held"}</span></span></a>`).join("")
     : `<p class="muted">No alerts yet. Inject an attack from the dashboard.</p>`}</div>`;
@@ -214,7 +214,7 @@ function render() {
   const reasons = (a.rules_fired || []).map((r) => REASONS[r]).filter(Boolean);
   if (!reasons.length) reasons.push("This purchase doesn't match how you normally use your card.");
   $("app").innerHTML = `
-    <div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</b><span>card alert · ${esc(a.user_id)}</span><span class="spacer"></span><span>${modeLabel}</span></div>
+    <div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Swipestop</b><span>card alert · ${esc(a.user_id)}</span><span class="spacer"></span><span>${modeLabel}</span></div>
     <div class="card">
       <span class="pill ${cls}">${label}</span>
       <h1>${ans ? "Thanks for letting us know" : "Did you make this purchase?"}</h1>

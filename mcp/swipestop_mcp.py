@@ -1,16 +1,16 @@
-"""Sentinel MCP server: lets an AI assistant (Claude Desktop, Claude Code, ChatGPT,
+"""Swipestop MCP server: lets an AI assistant (Claude Desktop, Claude Code, ChatGPT,
 Cursor...) query the live fraud stream in plain English.
 
 It speaks the Model Context Protocol over stdio (JSON-RPC 2.0, one message per
 line) with the standard library only, and forwards every tool call to the
-Sentinel HTTP API, so the assistant sees exactly what the dashboard sees.
+Swipestop HTTP API, so the assistant sees exactly what the dashboard sees.
 
-    python mcp/sentinel_mcp.py                       # normally started by your AI app
-    SENTINEL_URL=http://my-server:8000 python mcp/sentinel_mcp.py
+    python mcp/swipestop_mcp.py                       # normally started by your AI app
+    SWIPESTOP_URL=http://my-server:8000 python mcp/swipestop_mcp.py
 
 Example (Claude Desktop, claude_desktop_config.json):
-    {"mcpServers": {"sentinel": {"command": "python3",
-        "args": ["/path/to/fraud-detection-pipeline/mcp/sentinel_mcp.py"]}}}
+    {"mcpServers": {"swipestop": {"command": "python3",
+        "args": ["/path/to/fraud-detection-pipeline/mcp/swipestop_mcp.py"]}}}
 """
 from __future__ import annotations
 
@@ -21,12 +21,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-SERVER = {"name": "sentinel", "version": "1.0.0"}
+SERVER = {"name": "swipestop", "version": "1.0.0"}
 DEFAULT_PROTOCOL = "2025-06-18"
-BASE = os.environ.get("SENTINEL_URL", "http://127.0.0.1:8000").rstrip("/")
+BASE = os.environ.get("SWIPESTOP_URL", "http://127.0.0.1:8000").rstrip("/")
 
 TOOLS = [
-    {"name": "ask_sentinel",
+    {"name": "ask_swipestop",
      "description": "Ask the live fraud monitor a plain-English question, e.g. 'why was u01037 blocked?', "
                     "'show me fraud in Europe', 'give me a summary'. Returns the answer and a dashboard link.",
      "inputSchema": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}},
@@ -69,7 +69,7 @@ def fmt_alert(a: dict) -> str:
 
 def call_tool(name: str, args: dict, opener=urllib.request.urlopen) -> str:
     link = f"\n\nLive dashboard: {BASE}/"
-    if name == "ask_sentinel":
+    if name == "ask_swipestop":
         q = str(args.get("question", "")).strip()
         if not q:
             raise ValueError("question is required")
@@ -135,7 +135,7 @@ def handle(msg: dict, opener=urllib.request.urlopen) -> dict | None:
             text = call_tool(params.get("name"), params.get("arguments") or {}, opener)
             result = {"content": [{"type": "text", "text": text}]}
         except urllib.error.URLError:
-            result = {"content": [{"type": "text", "text": f"Sentinel isn't reachable at {BASE}. Start it with "
+            result = {"content": [{"type": "text", "text": f"Swipestop isn't reachable at {BASE}. Start it with "
                                                            "`python run.py` and try again."}], "isError": True}
         except Exception as e:
             result = {"content": [{"type": "text", "text": f"Error: {e}"}], "isError": True}

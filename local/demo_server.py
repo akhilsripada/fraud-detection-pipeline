@@ -1,4 +1,4 @@
-"""Run Sentinel on your laptop: live pipeline, dashboard, assistant and API. No AWS needed.
+"""Run Swipestop on your laptop: live pipeline, dashboard, assistant and API. No AWS needed.
 
     python run.py                          # easiest: starts this and opens the browser
     python local/demo_server.py            # then open http://localhost:8000
@@ -324,7 +324,7 @@ def main():
                     help="share of events that start an attack (higher = more alerts)")
     ap.add_argument("--warmup", type=int, default=100_000,
                     help="historical transactions to build user profiles first")
-    ap.add_argument("--db", default=str(ROOT / "data" / "sentinel.db"), help="SQLite file for alerts")
+    ap.add_argument("--db", default=str(ROOT / "data" / "swipestop.db"), help="SQLite file for alerts")
     ap.add_argument("--notify", metavar="TOPIC",
                     help="push 'was this you?' to your phone for blocked purchases via ntfy.sh (free app, no account)")
     ap.add_argument("--public-url", help="address your phone can open, used in the push link "

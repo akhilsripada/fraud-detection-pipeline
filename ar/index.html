@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sentinel AR Globe</title>
+<title>Swipestop AR Globe</title>
 <style>
   :root { --bg: #0c1014; --ink: #e6eaee; --muted: #8b95a1; --block: #ff6e64; --review: #f2b553; --panel: rgba(12,16,20,.82); }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; overflow: hidden; }
@@ -23,7 +23,7 @@
 <body>
 <div id="hud">
   <div class="card">
-    <h1>Sentinel AR globe</h1>
+    <h1>Swipestop AR globe</h1>
     <div class="muted" id="how">Drag to spin. On an Android phone with Chrome, tap <b>Start AR</b>, point at a table, and tap to place the globe.</div>
   </div>
   <div class="card" id="last"><span class="muted">Waiting for alerts…</span></div>
@@ -156,7 +156,7 @@ function addAlert(a) {
   document.getElementById("last").innerHTML = `<span class="b ${a.decision}">${a.decision}</span>$${Number(a.amount).toFixed(2)} in ${a.city}, ${a.country}<div class="muted">${a.user_id} · ${(a.rules_fired || []).join(", ").replaceAll("_", " ") || "model score"}</div>`;
 }
 
-// Live data from the Sentinel server; falls back to a small built-in simulation (e.g. on GitHub Pages).
+// Live data from the Swipestop server; falls back to a small built-in simulation (e.g. on GitHub Pages).
 const seen = new Set();
 let offline = false;
 async function poll() {
@@ -181,7 +181,7 @@ function simulate() {
 }
 await poll();
 setInterval(() => (offline ? simulate() : poll()), offline ? 2500 : 2000);
-if (offline) { simulate(); document.getElementById("how").insertAdjacentHTML("beforeend", "<br>Showing simulated alerts. Run Sentinel locally for live data."); }
+if (offline) { simulate(); document.getElementById("how").insertAdjacentHTML("beforeend", "<br>Showing simulated alerts. Run Swipestop locally for live data."); }
 
 // ---------------------------------------------------------------- interaction
 let drag = null, spin = 0.12;
@@ -240,7 +240,7 @@ function globeModel() {
   const root = new THREE.Group(); g.scale.setScalar(0.15); g.position.y = 0.17; root.add(g);
   return root;
 }
-quickLookButton("View in your room", globeModel, "sentinel-globe");
+quickLookButton("View in your room", globeModel, "swipestop-globe");
 
 renderer.setAnimationLoop((t, frame) => {
   const now = performance.now();

@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sentinel: real-time fraud detection</title>
-<meta name="description" content="Sentinel scores every card swipe as it streams in, declines fraud in under a millisecond, and explains each decision in plain English. Built by Akhil Sripada.">
-<meta property="og:title" content="Sentinel: real-time fraud detection">
+<title>Swipestop: real-time fraud detection</title>
+<meta name="description" content="Swipestop scores every card swipe as it streams in, declines fraud in under a millisecond, and explains each decision in plain English. Built by Akhil Sripada.">
+<meta property="og:title" content="Swipestop: real-time fraud detection">
 <meta property="og:description" content="Live demo: every card swipe scored in under a millisecond, with plain-English explanations and a cardholder 'was this you?' alert.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <style>
-  /* Sentinel product page.
+  /* Swipestop product page.
      One idea: fraud gets stopped before the receipt prints. The hero is a live receipt tape; the console below
      is the tool a fraud analyst would use (queue, map, case file). Red, amber and green only ever mean
      declined, on hold and approved. */
@@ -21,7 +21,7 @@
     --ok: #1e7b4f; --warn: #b07006; --bad: #cf2e2e;
     --paper: #fffdf8; --paper-ink: #2a2f36; --paper-dim: #8a8f96;
     --land: #e3e8ee; --land-edge: #b9c3cf; --globe: #f8fafc; --grid: #e8ecf1;
-    --sentinel: var(--bad);
+    --swipestop: var(--bad);
     --display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
     --body: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
     --mono: "Spline Sans Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -264,9 +264,9 @@
 <body>
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="Sentinel home">
+    <a class="brand" href="#top" aria-label="Swipestop home">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--bg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Sentinel
+      Swipestop
     </a>
     <nav aria-label="Sections">
       <a href="#console">Live console</a>
@@ -286,7 +286,7 @@
     <div class="wrap">
       <div>
         <h1>Stop fraud before the receipt prints.</h1>
-        <p class="lede">Sentinel scores every card swipe as it streams in, declines the bad ones in under a millisecond, explains each decision in plain English, and shows the cardholder exactly where and when it happened.</p>
+        <p class="lede">Swipestop scores every card swipe as it streams in, declines the bad ones in under a millisecond, explains each decision in plain English, and shows the cardholder exactly where and when it happened.</p>
         <div class="cta">
           <button class="btn primary" type="button" id="hero-attack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Run an attack</button>
           <a class="btn" href="https://github.com/akhilsripada/fraud-detection-pipeline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>View the code</a>
@@ -299,7 +299,7 @@
       </div>
       <div class="tape-wrap" aria-label="Live transaction tape">
         <div class="tape">
-          <div class="head"><b>SENTINEL</b><span>live card authorizations</span></div>
+          <div class="head"><b>SWIPESTOP</b><span>live card authorizations</span></div>
           <ol id="tape" aria-live="off"></ol>
           <div class="foot"><span>scored <b id="tape-scored">0</b></span><span>declined <b id="tape-declined">0</b></span></div>
         </div>
@@ -315,41 +315,41 @@
       </div>
       <div class="console">
         <div class="cmd">
-          <form id="sentinel-form" autocomplete="off">
+          <form id="swipestop-form" autocomplete="off">
             <label class="field">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/></svg>
-              <input id="sentinel-input" type="text" placeholder="Ask anything, e.g. “tell me the latest blocked transaction”" aria-label="Ask Sentinel">
+              <input id="swipestop-input" type="text" placeholder="Ask anything, e.g. “tell me the latest blocked transaction”" aria-label="Ask Swipestop">
             </label>
-            <button class="btn icon" type="button" id="sentinel-mic" aria-label="Speak a command"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
+            <button class="btn icon" type="button" id="swipestop-mic" aria-label="Speak a command"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
             <button class="btn primary" type="submit">Ask</button>
           </form>
           <div class="examples">
-            <button class="ex" data-cmd="sentinel">Why was the last transaction blocked?</button>
-            <button class="ex" data-cmd="sentinel">Simulate impossible travel</button>
-            <button class="ex" data-cmd="sentinel">Simulate an account takeover</button>
-            <button class="ex" data-cmd="sentinel">Show me fraud in Europe</button>
-            <button class="ex" data-cmd="sentinel">Give me a summary</button>
+            <button class="ex" data-cmd="swipestop">Why was the last transaction blocked?</button>
+            <button class="ex" data-cmd="swipestop">Simulate impossible travel</button>
+            <button class="ex" data-cmd="swipestop">Simulate an account takeover</button>
+            <button class="ex" data-cmd="swipestop">Show me fraud in Europe</button>
+            <button class="ex" data-cmd="swipestop">Give me a summary</button>
           </div>
         </div>
         <div class="bench">
           <div class="col">
-            <div class="col-head"><h3>Alert queue</h3><span id="sentinel-filter">all regions</span></div>
+            <div class="col-head"><h3>Alert queue</h3><span id="swipestop-filter">all regions</span></div>
             <div class="counts">
               <div><b id="s-scored">0</b><span>scored</span></div>
               <div><b id="s-flagged">0</b><span>flagged</span></div>
               <div class="c-bad"><b id="s-blocked">0</b><span>declined</span></div>
             </div>
-            <ul class="list" id="sentinel-feed"></ul>
+            <ul class="list" id="swipestop-feed"></ul>
           </div>
           <div class="col map-col">
             <div class="col-head"><h3>Where it's happening</h3></div>
             <a class="ar-link" href="ar/">Open in AR</a>
-            <canvas id="sentinel-globe" aria-label="Globe with live fraud alerts. Arcs join a card's last location to the suspicious one."></canvas>
+            <canvas id="swipestop-globe" aria-label="Globe with live fraud alerts. Arcs join a card's last location to the suspicious one."></canvas>
             <div class="legend"><span><i style="background:var(--bad)"></i>Declined</span><span><i style="background:var(--warn)"></i>On hold</span><span><i style="background:var(--land-edge)"></i>Cities</span></div>
           </div>
           <div class="col case-col">
             <div class="col-head"><h3>Case</h3><span>explained from the decision's own features</span></div>
-            <div class="case"><div class="reply" id="sentinel-reply" role="status" aria-live="polite"></div></div>
+            <div class="case"><div class="reply" id="swipestop-reply" role="status" aria-live="polite"></div></div>
           </div>
         </div>
       </div>
@@ -420,7 +420,7 @@ const NLU = (() => {
   const norm = (t) => " " + String(t).toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9%'\-\s.]/g, " ")
     .replace(/\s+/g, " ").trim() + " ";
 
-  // ------------------------------------------------------------------ Sentinel
+  // ------------------------------------------------------------------ Swipestop
   const REGION_WORDS = [
     ["europe", /\b(europe|european|uk|britain|london|paris|berlin|germany|france|romania|russia|moscow)\b/],
     ["asia", /\b(asia|asian|india|mumbai|hyderabad|japan|tokyo|singapore)\b/],
@@ -436,7 +436,7 @@ const NLU = (() => {
     if (/takeover|\bato\b|hack|log ?in|account|stolen login/.test(t)) return "account_takeover";
     return null;
   }
-  function sentinel(text) {
+  function swipestop(text) {
     const t = norm(text);
     const user = (t.match(/\bu\d{1,5}\b/) || [])[0] || null;
     if (/\b(simulate|inject|trigger|launch|start|run|fire|send)\b/.test(t) || /\battack\b/.test(t))
@@ -520,7 +520,7 @@ const NLU = (() => {
     return { intent: "unknown" };
   }
 
-  return { sentinel, pickpath, homemind, norm };
+  return { swipestop, pickpath, homemind, norm };
 })();
 
 // ===================================================================== shared
@@ -532,7 +532,7 @@ function readPal() {
   const s = getComputedStyle(document.documentElement);
   const g = (n) => s.getPropertyValue(n).trim();
   PAL = {};
-  ["bg", "panel", "ink", "muted", "line", "soft", "sentinel", "pick", "home", "ok", "warn", "bad", "land", "land-edge",
+  ["bg", "panel", "ink", "muted", "line", "soft", "swipestop", "pick", "home", "ok", "warn", "bad", "land", "land-edge",
    "globe", "grid", "floor", "rack", "wall", "glow", "cam", "cam-ink", "cam-line", "mono", "body", "display"]
     .forEach((k) => { PAL[k] = g("--" + k); });
 }
@@ -607,8 +607,8 @@ function wireCommand(id, handler) {
   return { run, show, input };
 }
 
-// ===================================================================== SENTINEL
-const Sentinel = (() => {
+// ===================================================================== SWIPESTOP
+const Swipestop = (() => {
   const COUNTRY = { Tampa: "US", "New York": "US", Chicago: "US", Seattle: "US", Austin: "US", "San Francisco": "US",
     Atlanta: "US", Denver: "US", Toronto: "CA", "Mexico City": "MX", London: "GB", Paris: "FR", Berlin: "DE",
     Lagos: "NG", Mumbai: "IN", Hyderabad: "IN", Singapore: "SG", Tokyo: "JP", Sydney: "AU", "São Paulo": "BR",
@@ -786,7 +786,7 @@ const Sentinel = (() => {
   }
 
   // ------------------------------------------------------------------ views
-  const feedEl = $("#sentinel-feed");
+  const feedEl = $("#swipestop-feed");
   function inFilter(a) { return !filter || REGIONS[filter].codes.includes(a.city.country); }
   function renderFeed() {
     feedDirty = false;
@@ -795,7 +795,7 @@ const Sentinel = (() => {
     $("#s-blocked").textContent = int(stats.blocked);
     $("#tape-scored").textContent = int(stats.scored);
     $("#tape-declined").textContent = int(stats.blocked);
-    $("#sentinel-filter").textContent = filter ? REGIONS[filter].label + " only" : "all regions";
+    $("#swipestop-filter").textContent = filter ? REGIONS[filter].label + " only" : "all regions";
     const rows = alerts.filter(inFilter).slice(0, 14);
     if (!rows.length) { feedEl.innerHTML = `<li class="row"><span></span><span class="muted">No alerts in this region yet. Say “simulate an account takeover” to create one.</span></li>`; return; }
     feedEl.innerHTML = rows.map((a, i) => `<li class="row${a.id === selectedId ? " sel" : ""}${a.fresh && i < 3 && performance.now() - a.born < 1500 ? " new" : ""}" data-id="${a.id}" tabindex="0">
@@ -813,7 +813,7 @@ const Sentinel = (() => {
   feedEl.addEventListener("keydown", (e) => { if (e.key === "Enter") e.target.click(); });
 
   // ------------------------------------------------------------------ globe
-  const canvas = $("#sentinel-globe");
+  const canvas = $("#swipestop-globe");
   function vec(lat, lon) { const la = lat * D2R, lo = lon * D2R; return [Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo)]; }
   function view(v) {
     const r = rot * D2R, t = tilt * D2R;
@@ -965,7 +965,7 @@ const Sentinel = (() => {
     return top + why + next + link + truth;
   }
   function handle(text) {
-    const it = NLU.sentinel(text);
+    const it = NLU.swipestop(text);
     if (it.intent === "explain") {
       let a = it.user ? alerts.find((x) => x.uid === it.user) : alerts.find((x) => x.decision === "BLOCK" && inFilter(x)) || alerts[0];
       if (!a) {
@@ -1003,7 +1003,7 @@ const Sentinel = (() => {
         <li>Of the last ${alerts.length} alerts, ${fraud} were real fraud by the simulator's ground truth and ${alerts.length - fraud} were false alarms.</li></ul>` };
     }
     if (it.intent === "clear") { filter = null; feedDirty = true; holdUntil = 0; return { html: "<p>Showing all regions again.</p>" }; }
-    return { html: `<p>I didn't catch that. Sentinel understands requests like these:</p><ul><li>“Why was u01037 blocked?”</li><li>“Simulate impossible travel”</li><li>“Show me fraud in Asia”</li><li>“Give me a summary”</li></ul>` };
+    return { html: `<p>I didn't catch that. Swipestop understands requests like these:</p><ul><li>“Why was u01037 blocked?”</li><li>“Simulate impossible travel”</li><li>“Show me fraud in Asia”</li><li>“Give me a summary”</li></ul>` };
   }
   function topReason(list) {
     const c = {};
@@ -1017,7 +1017,7 @@ const Sentinel = (() => {
   return {
     draw,
     start() {
-      runner = wireCommand("sentinel", handle);
+      runner = wireCommand("swipestop", handle);
       runner.input.value = "Why was the last transaction blocked?"; runner.run(runner.input.value);
       setTimeout(() => attack("impossible_travel"), 900);
       $("#hero-attack").addEventListener("click", () => {
@@ -1029,8 +1029,8 @@ const Sentinel = (() => {
 })();
 
 // ===================================================================== boot
-Sentinel.start();
-(function loop(t) { Sentinel.draw(t); requestAnimationFrame(loop); })(0);
+Swipestop.start();
+(function loop(t) { Swipestop.draw(t); requestAnimationFrame(loop); })(0);
 </script>
 </body>
 </html>

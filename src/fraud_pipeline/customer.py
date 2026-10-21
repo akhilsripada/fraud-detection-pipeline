@@ -207,7 +207,7 @@ class PushNotifier:
         body = (f"${alert['amount']:,.2f} in {alert.get('city')}, {alert.get('country')} was blocked on your card. "
                 "Was this you?").encode()
         req = urllib.request.Request(f"{self.server}/{self.topic}", data=body, method="POST", headers={
-            "Title": "Sentinel: purchase blocked", "Tags": "warning,credit_card",
+            "Title": "Swipestop: purchase blocked", "Tags": "warning,credit_card",
             "Click": f"{self.public_url}/customer/{alert['txn_id']}"})
         try:
             with self.opener(req, timeout=5):
