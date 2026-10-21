@@ -11,6 +11,13 @@ HTTP API (used by the dashboard and by the MCP server in mcp/):
     GET  /api/stats          running totals
     POST /api/attack?type=   inject a simulated attack
 
+Cardholder side ("was this you?"):
+    GET  /customer/<id>                 the cardholder's alert page (where, when, AR "show me where")
+    GET  /api/alerts/<id>/context       merchant, local time, the card's recent purchases
+    POST /api/alerts/<id>/feedback      {"verdict": "mine" | "not_mine"}  (not_mine freezes the card)
+    POST /api/cards/<user>/unfreeze
+    GET  /api/feedback                  cardholder answers as labelled examples
+
 The simulator streams transactions in real time into the same Pipeline the
 Lambda runs (in-memory state instead of DynamoDB). Decisions are pushed to
 the browser with Server-Sent Events; the AWS deployment uses API Gateway
@@ -34,6 +41,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from fraud_pipeline.assistant import Assistant, GeminiRouter  # noqa: E402
+from fraud_pipeline.customer import CustomerDesk, PushNotifier, merchant  # noqa: E402
 from fraud_pipeline.pipeline import ALLOW, BLOCK, FraudScorer, Pipeline  # noqa: E402
 from fraud_pipeline.simulator import ATTACKS, TransactionSimulator  # noqa: E402
 from fraud_pipeline.sinks import InMemoryAlertSink, alert_payload  # noqa: E402
@@ -41,6 +49,7 @@ from fraud_pipeline.state import InMemoryStateStore  # noqa: E402
 from fraud_pipeline.store import AlertStore  # noqa: E402
 
 DASHBOARD = ROOT / "dashboard" / "index.html"
+CUSTOMER = ROOT / "dashboard" / "customer.html"
 
 
 class Hub:
@@ -72,10 +81,12 @@ class Hub:
 
 class Engine(threading.Thread):
     def __init__(self, hub: Hub, tps: float, users: int, fraud_rate: float, warmup: int,
-                 store: AlertStore | None = None):
+                 store: AlertStore | None = None, notifier: PushNotifier | None = None):
         super().__init__(daemon=True)
         self.hub, self.tps, self.warmup = hub, tps, warmup
         self.store = store or AlertStore()
+        self.desk = CustomerDesk(self.store)
+        self.notifier = notifier
         self._pending = {"processed": 0, "flagged": 0, "blocked": 0}
         self.alerts = InMemoryAlertSink()
         self.pipeline = Pipeline(FraudScorer.default(), InMemoryStateStore(), [self.alerts])
@@ -91,7 +102,9 @@ class Engine(threading.Thread):
     def run(self):
         # 1) build user history fast on the simulated clock (not shown on the dashboard)
         for txn in self.sim.stream(self.warmup):
-            self.pipeline.process(txn)
+            d = self.pipeline.process(txn)
+            if d is not None:
+                self.desk.record(txn, d.decision)
         self.ready = True
         # 2) real time from here on
         threading.Thread(target=self._stats_loop, daemon=True).start()
@@ -109,24 +122,44 @@ class Engine(threading.Thread):
         if d is None:
             return
         now = time.time()
-        flagged = d.decision != ALLOW
+        model_flagged = d.decision != ALLOW
         t = self.totals
+        t["tp"] += model_flagged and d.label == 1  # precision/recall measure the model, before any card freeze
+        t["fp"] += model_flagged and d.label == 0
+        t["fn"] += (not model_flagged) and d.label == 1
+        if self.desk.is_frozen(d.user_id):  # the cardholder said "not me": nothing else goes through
+            d.decision = BLOCK
+            d.rules_fired = [*d.rules_fired, "card_frozen"]
+        flagged = d.decision != ALLOW
         t["processed"] += 1
         t["flagged"] += flagged
         t["blocked"] += d.decision == BLOCK
-        t["tp"] += flagged and d.label == 1
-        t["fp"] += flagged and d.label == 0
-        t["fn"] += (not flagged) and d.label == 1
+        self.desk.record(txn, d.decision)
         self.window.append((now, d.latency_ms))
         p = self._pending
         p["processed"] += 1
         p["flagged"] += flagged
         p["blocked"] += d.decision == BLOCK
         if flagged:
-            msg = {**alert_payload(d), "features": d.features}
+            msg = {**alert_payload(d), "features": d.features,
+                   "merchant": merchant(txn.get("merchant_id", ""), d.merchant_category, d.city)}
             self.store.save(msg)
             self.recent_alerts.append(msg)
             self.hub.publish(msg)
+            if self.notifier:
+                threading.Thread(target=self.notifier.notify, args=(msg,), daemon=True).start()
+
+    def answer(self, txn_id: str, verdict: str) -> dict | None:
+        """The cardholder's reply to an alert. Returns None if there is no such alert."""
+        alert = self.store.get(txn_id)
+        if alert is None:
+            return None
+        out = self.desk.answer(alert, verdict)
+        self.hub.publish({"type": "case", "txn_id": txn_id, "user_id": alert["user_id"], **out})
+        if out["status"] == "recorded":
+            self.hub.publish({"type": "info", "message": f"{alert['user_id']}: " + (
+                "cardholder said NOT ME, card frozen" if verdict == "not_mine" else "cardholder confirmed the purchase")})
+        return out
 
     def inject(self, kind: str, timeout: float = 2.0) -> str | None:
         """Queue an attack from another thread and wait for the targeted cardholder id."""
@@ -196,6 +229,13 @@ def make_handler(engine: Engine, hub: Hub, assistant: Assistant):
                 q = parse_qs(urlparse(self.path).query)
                 limit = max(1, min(200, int(q.get("limit", ["20"])[0] or 20)))
                 return self._json(200, engine.store.recent(limit, q.get("user", [None])[0]))
+            if path.startswith("/api/alerts/") and path.endswith("/context"):
+                a = engine.store.get(path.split("/")[3])
+                return self._json(200, engine.desk.context(a)) if a else self._json(404, {"error": "no alert with that id"})
+            if path == "/api/feedback":
+                return self._json(200, engine.desk.feedback())
+            if path.startswith("/customer"):
+                return self._send(200, CUSTOMER.read_bytes(), "text/html; charset=utf-8")
             if path.startswith("/api/alerts/"):
                 a = engine.store.get(path.rsplit("/", 1)[1])
                 return self._json(200, a) if a else self._json(404, {"error": "no alert with that id"})
@@ -221,6 +261,20 @@ def make_handler(engine: Engine, hub: Hub, assistant: Assistant):
                                       .encode())
                 engine.attacks.put((kind, None))
                 return self._send(202, json.dumps({"queued": kind}).encode())
+            if url.path.startswith("/api/alerts/") and url.path.endswith("/feedback"):
+                try:
+                    verdict = str(json.loads(raw or b"{}").get("verdict", ""))
+                except (ValueError, AttributeError):
+                    verdict = ""
+                if verdict not in ("mine", "not_mine"):
+                    return self._json(400, {"error": 'send JSON like {"verdict": "not_mine"} (or "mine")'})
+                out = engine.answer(url.path.split("/")[3], verdict)
+                return self._json(200, out) if out else self._json(404, {"error": "no alert with that id"})
+            if url.path.startswith("/api/cards/") and url.path.endswith("/unfreeze"):
+                user = url.path.split("/")[3]
+                engine.desk.unfreeze(user)
+                hub.publish({"type": "info", "message": f"{user}: card unfrozen"})
+                return self._json(200, {"user_id": user, "frozen": False})
             if url.path == "/api/ask":
                 try:
                     text = str(json.loads(raw or b"{}").get("text", "")).strip()
@@ -271,10 +325,18 @@ def main():
     ap.add_argument("--warmup", type=int, default=100_000,
                     help="historical transactions to build user profiles first")
     ap.add_argument("--db", default=str(ROOT / "data" / "sentinel.db"), help="SQLite file for alerts")
+    ap.add_argument("--notify", metavar="TOPIC",
+                    help="push 'was this you?' to your phone for blocked purchases via ntfy.sh (free app, no account)")
+    ap.add_argument("--public-url", help="address your phone can open, used in the push link "
+                                         "(default http://HOST:PORT)")
     args = ap.parse_args()
 
     hub = Hub()
-    engine = Engine(hub, args.tps, args.users, args.fraud_rate, args.warmup, AlertStore(args.db))
+    notifier = None
+    if args.notify:
+        notifier = PushNotifier(args.notify, args.public_url or f"http://{args.host}:{args.port}")
+        print(f"push alerts: subscribe to '{args.notify}' in the ntfy app")
+    engine = Engine(hub, args.tps, args.users, args.fraud_rate, args.warmup, AlertStore(args.db), notifier)
     router = GeminiRouter.from_env()
     assistant = Assistant(engine.list_alerts, engine.stats, engine.inject, router)
     print("assistant: rules" + (" + Gemini for free-form questions" if router else

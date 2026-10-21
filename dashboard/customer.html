@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Card Alert</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --ink: #14171c; --muted: #646c78; --line: #e3e6ea;
+    --accent: #2453d6; --block: #c62f2f; --block-bg: #fde9e9; --review: #a86400; --review-bg: #fff3dc;
+    --ok: #1d7a46; --ok-bg: #e2f5ea; --land: #e6eaef; --land-edge: #cfd6df; --sea: #f8f9fb;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --panel: #171b21; --ink: #e8ebef; --muted: #8d96a3; --line: #262c34;
+      --accent: #7aa2ff; --block: #ff6b6b; --block-bg: #3a1c1f; --review: #f0b347; --review-bg: #3a2c12;
+      --ok: #57c98a; --ok-bg: #15301f; --land: #1f262f; --land-edge: #303a46; --sea: #13171c;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  main { max-width: 520px; margin: 0 auto; padding: 16px 16px calc(32px + env(safe-area-inset-bottom)); display: grid; gap: 12px; }
+  .top { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  .top b { color: var(--ink); }
+  .top .spacer { flex: 1; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; }
+  .BLOCK, .frozen { color: var(--block); background: var(--block-bg); }
+  .REVIEW { color: var(--review); background: var(--review-bg); }
+  .ALLOW, .mine { color: var(--ok); background: var(--ok-bg); }
+  h1 { font-size: 20px; margin: 10px 0 2px; letter-spacing: -0.01em; }
+  .amount { font-size: 38px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin: 6px 0 0; }
+  .merchant { font-size: 16px; font-weight: 600; }
+  .muted { color: var(--muted); }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin-top: 14px; font-size: 14px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  button { font: inherit; font-weight: 600; padding: 12px 14px; border-radius: 10px; cursor: pointer; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); }
+  button:disabled { opacity: .55; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { background: var(--block); border-color: var(--block); color: #fff; }
+  button.wide { width: 100%; margin-top: 10px; }
+  .answered { margin-top: 14px; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+  h2 { font-size: 14px; margin: 0 0 10px; }
+  svg.map { width: 100%; height: auto; display: block; border-radius: 10px; background: var(--sea); }
+  .tl { list-style: none; margin: 0; padding: 0; }
+  .tl li { display: grid; grid-template-columns: 14px 1fr auto; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .tl li:first-child { border-top: 0; }
+  .tl .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); margin-top: 5px; }
+  .tl .this .dot { background: var(--block); box-shadow: 0 0 0 4px var(--block-bg); }
+  .tl .amt { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  .tl .sub { grid-column: 2 / 4; font-size: 13px; color: var(--muted); }
+  .gap { grid-column: 2 / 4; font-size: 12px; color: var(--muted); }
+  .gap.bad { color: var(--block); font-weight: 600; }
+  .why li { margin: 4px 0; }
+  .why { padding-left: 18px; margin: 0; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .note { font-size: 12px; color: var(--muted); text-align: center; }
+  .picker a { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); color: inherit; text-decoration: none; }
+  .picker a:first-child { border-top: 0; }
+
+  /* ------------------------------------------------ "Show me where" view */
+  #ar { position: fixed; inset: 0; z-index: 10; background: #0b0d10; color: #fff; overflow: hidden; touch-action: none; display: none; }
+  #ar.on { display: block; }
+  #ar video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #ar .sky { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 120%, #1f2a38 0%, #0b0d10 70%); }
+  #ar .sky.hidden { display: none; }
+  #horizon { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255,255,255,.18); }
+  .hud { position: absolute; left: 0; right: 0; padding: 12px 16px; display: flex; gap: 10px; align-items: flex-start; }
+  .hud.top { top: env(safe-area-inset-top); background: linear-gradient(rgba(0,0,0,.55), transparent); }
+  .hud.bottom { bottom: 0; padding-bottom: calc(14px + env(safe-area-inset-bottom)); flex-direction: column; align-items: stretch;
+    background: linear-gradient(transparent, rgba(0,0,0,.65)); }
+  .hud .msg { flex: 1; font-size: 14px; text-shadow: 0 1px 2px #000; }
+  .hud button { background: rgba(255,255,255,.95); color: #111; border: 0; padding: 8px 14px; }
+  #pin { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center;
+    pointer-events: none; will-change: transform; }
+  #pin .label { background: #fff; color: #111; border-radius: 12px; padding: 8px 12px; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    min-width: 170px; }
+  #pin .label b { display: block; font-size: 15px; }
+  #pin .label span { display: block; font-size: 12px; color: #555; font-variant-numeric: tabular-nums; }
+  #pin .label .km { font-size: 18px; font-weight: 700; color: #c62f2f; }
+  #pin svg { margin-top: -2px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+  #pin.pulse svg circle.ring { animation: ring 1.6s ease-out infinite; transform-origin: 20px 20px; }
+  @keyframes ring { from { r: 6; opacity: .9; } to { r: 19; opacity: 0; } }
+  .edge { position: absolute; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; display: none;
+    background: rgba(198,47,47,.95); padding: 10px 12px; border-radius: 99px; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+  .edge.l { left: 12px; } .edge.r { right: 12px; }
+  .strip { position: relative; height: 34px; overflow: hidden; border-radius: 8px; background: rgba(0,0,0,.45); }
+  .strip .ticks { position: absolute; top: 0; bottom: 0; left: 50%; white-space: nowrap; font: 600 12px var(--mono); }
+  .strip .tick { position: absolute; top: 9px; transform: translateX(-50%); color: rgba(255,255,255,.8); }
+  .strip .tick.target { color: #ff8c8c; }
+  .strip .center { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #fff; transform: translateX(-1px); }
+  .readout { display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
+  #radar { position: absolute; right: 14px; top: calc(64px + env(safe-area-inset-top)); width: 104px; height: 104px; }
+</style>
+</head>
+<body>
+<main id="app">
+  <div class="top"><b>Sentinel</b><span>card alert</span><span class="spacer"></span><span id="mode"></span></div>
+  <div class="card"><p class="muted">Loading the alert…</p></div>
+</main>
+
+<div id="ar" aria-label="Where the purchase happened">
+  <video id="cam" playsinline muted autoplay></video>
+  <div class="sky" id="sky"></div>
+  <div id="horizon"></div>
+  <div id="pin" class="pulse">
+    <div class="label"><b id="pinName"></b><span class="km" id="pinKm"></span><span id="pinWhen"></span></div>
+    <svg width="40" height="52" viewBox="0 0 40 52" aria-hidden="true">
+      <path d="M20 51C20 51 4 30 4 19a16 16 0 0 1 32 0c0 11-16 32-16 32z" fill="#c62f2f" stroke="#fff" stroke-width="2.5"/>
+      <circle cx="20" cy="19" r="6" fill="#fff"/><circle class="ring" cx="20" cy="19" r="6" fill="none" stroke="#fff" stroke-width="2"/>
+    </svg>
+  </div>
+  <div class="edge l" id="edgeL">◀ Turn left</div>
+  <div class="edge r" id="edgeR">Turn right ▶</div>
+  <svg id="radar" viewBox="-52 -52 104 104" aria-hidden="true"></svg>
+  <div class="hud top"><div class="msg" id="arMsg">Getting your location…</div><button id="arClose">Close</button></div>
+  <div class="hud bottom">
+    <div class="strip"><div class="ticks" id="ticks"></div><div class="center"></div></div>
+    <div class="readout"><span id="rHeading">Heading –</span><span id="rBearing">Purchase –</span><span id="rFrom"></span></div>
+  </div>
+</div>
+
+<script>
+// The cardholder's view of one alert: what was bought, exactly where and when, the card's last few
+// purchases, a "was this you?" answer that can freeze the card, and "Show me where": the phone's
+// camera with a pin floating in the real direction of the store, placed from GPS + compass.
+//
+// Data comes from the local server (/api/alerts/<id>/context), or from ?d=<base64 JSON> on the static demo site.
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const money = (n) => "$" + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const REASONS = {
+  impossible_travel: "Your card was used too far from your last purchase, too quickly, to be the same person travelling.",
+  card_testing: "Several tiny charges in a row, a common way stolen cards are tested before a big purchase.",
+  high_velocity_1m: "An unusual number of purchases within one minute.",
+  amount_spike: "Much larger than what you usually spend.",
+  new_device_new_country: "A device we've never seen, in a country you've never used this card in.",
+  risky_category_high_amount: "A large purchase in a category often used to cash out stolen cards.",
+  new_device: "It came from a device this card has never been used on.",
+  card_frozen: "You froze this card, so every purchase on it is declined.",
+};
+
+const params = new URLSearchParams(location.search);
+const pathId = (location.pathname.match(/\/customer\/([^/?#]+)/) || [])[1];
+const txnId = pathId || params.get("id");
+const STATIC = params.has("d");
+let ctx = null, modeLabel = STATIC ? "demo link" : "";
+
+function decodeData(s) {
+  const b = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(b, (c) => c.charCodeAt(0))));
+}
+
+async function load() {
+  if (STATIC) {
+    try { ctx = decodeData(params.get("d")); } catch { return fail("This alert link is damaged."); }
+    return render();
+  }
+  if (!txnId) return picker();
+  try {
+    const r = await fetch(`/api/alerts/${encodeURIComponent(txnId)}/context`, { cache: "no-store" });
+    if (r.status === 404) return fail("We couldn't find that alert.");
+    ctx = await r.json();
+  } catch { return fail("Can't reach the server. Is <code>python run.py</code> running?"); }
+  render();
+}
+
+async function picker() {
+  let alerts = [];
+  try { alerts = await (await fetch("/api/alerts?limit=12", { cache: "no-store" })).json(); } catch {}
+  $("app").innerHTML = `<div class="top"><b>Sentinel</b><span>card alerts</span></div><div class="card picker"><h2>Recent alerts</h2>${
+    alerts.length ? alerts.map((a) => `<a href="/customer/${encodeURIComponent(a.txn_id)}"><span>${esc(a.user_id)} · ${esc(a.city)}, ${esc(a.country)}</span>
+      <span><b>${money(a.amount)}</b> <span class="pill ${esc(a.decision)}">${a.decision === "BLOCK" ? "Blocked" : "Held"}</span></span></a>`).join("")
+    : `<p class="muted">No alerts yet. Inject an attack from the dashboard.</p>`}</div>`;
+}
+
+function fail(msg) { $("app").querySelector(".card").innerHTML = `<p>${msg}</p>`; }
+
+function ago(ts) {
+  const s = Math.max(0, Date.now() / 1000 - ts);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return `${Math.round(s / 86400)} days ago`;
+}
+const yourTime = (ts) => new Date(ts * 1000).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+
+function status() {
+  const a = ctx.alert, ans = ctx.answer;
+  if (ans && ans.verdict === "not_mine") return ["frozen", "Card frozen"];
+  if (ans && ans.verdict === "mine") return ["mine", "You confirmed this"];
+  if (ctx.card.frozen) return ["frozen", "Card frozen"];
+  return a.decision === "BLOCK" ? ["BLOCK", "Declined"] : ["REVIEW", "On hold"];
+}
+
+function render() {
+  const a = ctx.alert, m = ctx.merchant, [cls, label] = status();
+  const ans = ctx.answer;
+  const reasons = (a.rules_fired || []).map((r) => REASONS[r]).filter(Boolean);
+  if (!reasons.length) reasons.push("This purchase doesn't match how you normally use your card.");
+  $("app").innerHTML = `
+    <div class="top"><b>Sentinel</b><span>card alert · ${esc(a.user_id)}</span><span class="spacer"></span><span>${modeLabel}</span></div>
+    <div class="card">
+      <span class="pill ${cls}">${label}</span>
+      <h1>${ans ? "Thanks for letting us know" : "Did you make this purchase?"}</h1>
+      <p class="amount">${money(a.amount)}</p>
+      <div class="merchant">${esc(m.name)}</div>
+      <div class="muted">${esc((m.category || "").replace("_", " "))}</div>
+      <dl class="facts">
+        <dt>Where</dt><dd>${esc(m.city)}, ${esc(m.country)}<br><span class="muted mono">${(+m.lat).toFixed(4)}, ${(+m.lon).toFixed(4)}</span></dd>
+        <dt>Their time</dt><dd>${esc(ctx.when.local)} ${esc(ctx.when.tz)}</dd>
+        <dt>Your time</dt><dd>${esc(yourTime(a.ts))} · ${ago(a.ts)}</dd>
+      </dl>
+      ${ans ? `<div class="answered ${ans.verdict === "mine" ? "mine" : "frozen"}">${ans.verdict === "mine"
+          ? "Got it. We've marked this as a false alarm, and it helps us flag fewer of your real purchases."
+          : "Your card is frozen. Every new purchase on it will be declined, and this charge is reported as fraud."}</div>`
+        : `<div class="actions"><button class="primary" id="yes">Yes, it was me</button><button class="danger" id="no">No, freeze my card</button></div>`}
+      <button class="wide" id="where">📍 Show me where it happened</button>
+    </div>
+    <div class="card"><h2>Why we stopped it</h2><ul class="why">${reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>
+    <div class="card"><h2>Your card's recent purchases</h2>${mapSvg()}<ul class="tl" style="margin-top:10px">${timeline()}</ul></div>
+    <p class="note">${STATIC ? "Demo link: answers are shown here but not sent anywhere." : "Answers are saved and used to retrain the model."}</p>`;
+  if (!ans) { $("yes").onclick = () => answer("mine"); $("no").onclick = () => answer("not_mine"); }
+  $("where").onclick = openAR;
+}
+
+function timeline() {
+  return ctx.timeline.slice().reverse().map((t) => {
+    const g = t.gap, fast = g && g.km >= 150 && g.kmh > 900;   // same-city hops are never "impossible"
+    return `<li class="${t.this ? "this" : ""}"><span class="dot"></span>
+      <span><b>${esc(t.merchant)}</b></span><span class="amt">${money(t.amount)}</span>
+      <span class="sub">${esc(t.when.local)} ${t.this ? "· this purchase" : ""}</span>
+      ${g && g.km >= 30 ? `<span class="gap ${fast ? "bad" : ""}">${g.km.toLocaleString()} km from the purchase before, ${g.minutes < 1 ? "under a minute" : g.minutes + " min"} later${fast ? ` (${g.kmh.toLocaleString()} km/h, faster than any plane)` : ""}</span>` : ""}
+    </li>`;
+  }).join("");
+}
+
+// Simplified continent outlines as [lon, lat] rings (same as the dashboard map).
+const LAND = [
+    // North America
+    [[-165,65],[-160,71],[-140,70],[-125,70],[-110,73],[-95,72],[-82,73],[-70,67],[-62,60],[-56,52],[-64,47],[-70,43],[-74,40],[-76,35],[-81,31],[-80,25],[-82,28],[-85,30],[-90,29],[-94,29],[-97,26],[-97,21],[-95,19],[-91,19],[-87,21],[-88,16],[-84,15],[-83,10],[-79,9],[-77,8],[-80,7],[-83,8],[-86,12],[-92,15],[-96,16],[-105,20],[-106,23],[-110,23],[-112,29],[-115,32],[-117,32],[-120,34],[-123,38],[-124,42],[-124,48],[-128,51],[-134,57],[-140,60],[-150,61],[-155,58],[-162,58],[-165,62]],
+    // Greenland
+    [[-55,60],[-45,60],[-40,65],[-22,70],[-20,77],[-30,83],[-55,82],[-70,78],[-60,76],[-55,70]],
+    // South America
+    [[-77,8],[-72,12],[-63,11],[-55,6],[-50,2],[-48,-1],[-40,-3],[-35,-6],[-35,-9],[-39,-14],[-40,-22],[-48,-26],[-53,-33],[-58,-38],[-62,-40],[-65,-45],[-68,-50],[-69,-55],[-74,-53],[-75,-45],[-73,-37],[-71,-30],[-70,-18],[-76,-14],[-81,-6],[-80,-1],[-78,2],[-78,7]],
+    // Eurasia
+    [[-9,43],[-9,39],[-6,36],[-2,37],[0,39],[3,43],[8,44],[12,42],[16,38],[18,40],[13,45],[19,42],[22,37],[26,40],[29,41],[36,36],[35,33],[34,28],[39,20],[43,13],[45,13],[52,16],[57,19],[59,22],[56,26],[51,24],[48,29],[52,27],[57,25],[62,25],[67,24],[70,21],[73,17],[77,8],[80,13],[80,16],[87,21],[92,22],[94,17],[98,16],[98,8],[101,3],[104,1],[100,7],[101,13],[105,9],[109,12],[108,17],[106,20],[110,21],[117,23],[121,29],[122,31],[119,35],[122,37],[118,39],[122,40],[125,40],[127,35],[129,35],[130,42],[135,44],[141,48],[140,54],[136,55],[143,59],[155,59],[163,62],[178,65],[180,69],[160,70],[140,72],[120,73],[105,78],[95,76],[80,73],[70,73],[60,70],[45,68],[40,66],[33,70],[25,71],[15,68],[5,62],[5,58],[10,59],[11,55],[8,57],[8,54],[5,53],[2,51],[-2,48],[-5,48],[-1,45],[-2,43]],
+    // Great Britain
+    [[-5,50],[1,51],[2,53],[0,54],[-2,56],[-3,58],[-5,58],[-6,56],[-3,54],[-4,53],[-5,52]],
+    // Africa
+    [[-17,15],[-17,21],[-13,27],[-10,30],[-6,36],[0,36],[10,37],[11,33],[20,31],[25,32],[32,31],[34,28],[39,21],[43,12],[51,12],[51,10],[48,5],[41,-1],[39,-5],[40,-11],[40,-16],[35,-20],[35,-24],[33,-27],[31,-30],[27,-34],[20,-35],[18,-32],[15,-27],[12,-18],[13,-12],[12,-5],[9,-1],[9,4],[5,5],[-2,5],[-8,4],[-13,8],[-17,13]],
+    // Madagascar
+    [[44,-25],[47,-25],[50,-15],[49,-12],[44,-17]],
+    // Japan
+    [[130,31],[132,34],[135,34],[140,35],[141,38],[142,41],[140,41],[140,38],[136,37],[132,35]],
+    // Sumatra, Borneo, Java, New Guinea
+    [[95,5],[98,4],[106,-6],[104,-6],[100,-2]],
+    [[109,1],[111,-3],[116,-4],[119,1],[117,7],[113,3]],
+    [[105,-6],[114,-7],[114,-8],[106,-7]],
+    [[131,-1],[141,-3],[150,-10],[143,-9],[138,-8]],
+    // Australia, New Zealand
+    [[114,-22],[114,-34],[118,-35],[124,-33],[131,-31],[136,-35],[138,-34],[140,-38],[146,-39],[150,-37],[153,-32],[153,-25],[146,-19],[145,-15],[142,-11],[141,-17],[136,-12],[131,-12],[126,-14],[122,-18]],
+    [[172,-35],[178,-38],[175,-41],[171,-44],[167,-46],[170,-42]],
+  ];
+
+function mapSvg() {
+  const pts = ctx.timeline.map((t) => [+t.lon, +t.lat]);
+  let [x0, x1] = [Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[0]))];
+  let [y0, y1] = [Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[1]))];
+  const W = 480, H = 240, pad = 0.25;
+  let sx = Math.max(x1 - x0, 12), sy = Math.max(y1 - y0, 6);
+  if (sx / sy > W / H) sy = sx * H / W; else sx = sy * W / H;      // keep the aspect, centre the points
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  x0 = cx - sx * (0.5 + pad); x1 = cx + sx * (0.5 + pad); y0 = cy - sy * (0.5 + pad); y1 = cy + sy * (0.5 + pad);
+  const px = (lon) => ((lon - x0) / (x1 - x0) * W).toFixed(1), py = (lat) => ((y1 - lat) / (y1 - y0) * H).toFixed(1);
+  const land = LAND.map((r) => `<path d="M${r.map(([lo, la]) => px(lo) + "," + py(la)).join("L")}Z"/>`).join("");
+  const path = pts.map(([lo, la], i) => (i ? "L" : "M") + px(lo) + "," + py(la)).join("");
+  const dots = ctx.timeline.map((t, i) => t.this
+    ? `<circle cx="${px(t.lon)}" cy="${py(t.lat)}" r="7" fill="var(--block)" stroke="var(--panel)" stroke-width="2.5"/>
+       <text x="${px(t.lon)}" y="${py(t.lat) - 12}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--block)">${esc(t.city)}</text>`
+    : `<circle cx="${px(t.lon)}" cy="${py(t.lat)}" r="4" fill="var(--muted)"/>`).join("");
+  return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of recent purchases">
+    <g fill="var(--land)" stroke="var(--land-edge)" stroke-width="1" stroke-linejoin="round">${land}</g>
+    <path d="${path}" fill="none" stroke="var(--block)" stroke-width="2" stroke-dasharray="5 4" opacity=".8"/>${dots}</svg>`;
+}
+
+async function answer(verdict) {
+  document.querySelectorAll(".actions button").forEach((b) => (b.disabled = true));
+  if (STATIC) {
+    ctx.answer = { verdict, answered_at: Date.now() / 1000 };
+    if (verdict === "not_mine") ctx.card.frozen = true;
+    return render();
+  }
+  try {
+    const r = await fetch(`/api/alerts/${encodeURIComponent(ctx.alert.txn_id)}/feedback`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ verdict }) });
+    if (!r.ok) throw new Error(r.status);
+    const out = await r.json();
+    ctx.answer = { verdict: out.verdict || verdict, answered_at: out.answered_at };
+    ctx.card.frozen = out.frozen;
+  } catch { alert("Couldn't send your answer. Try again."); }
+  render();
+}
+
+// ------------------------------------------------------------------ "Show me where"
+// Bearing from you to the store comes from GPS; which way the phone faces comes from the compass.
+// The pin is drawn at (bearing - heading) across the camera's field of view, so it sits over the
+// real direction of the purchase. Without a camera or compass it falls back to a dark sky you can drag.
+const R = 6371, rad = (d) => d * Math.PI / 180, deg = (r) => r * 180 / Math.PI;
+const HFOV = 58, VFOV = 72;
+function distanceKm(a, b) {
+  const dl = rad(b[0] - a[0]), dn = rad(b[1] - a[1]);
+  const h = Math.sin(dl / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dn / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function bearing(a, b) {
+  const y = Math.sin(rad(b[1] - a[1])) * Math.cos(rad(b[0]));
+  const x = Math.cos(rad(a[0])) * Math.sin(rad(b[0])) - Math.sin(rad(a[0])) * Math.cos(rad(b[0])) * Math.cos(rad(b[1] - a[1]));
+  return (deg(Math.atan2(y, x)) + 360) % 360;
+}
+const wrap = (d) => ((d + 540) % 360) - 180;   // -180..180
+const compassName = (b) => ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"][Math.round(b / 45) % 8];
+
+const ar = { on: false, me: null, meLabel: "", heading: 0, hasCompass: false, pitch: 0, hasTilt: false, stream: null, drag: null, watch: null };
+
+async function openAR() {
+  ar.on = true; $("ar").classList.add("on");
+  $("arMsg").textContent = "Getting your location…";
+  const m = ctx.merchant, target = [+m.lat, +m.lon];
+  $("pinName").textContent = m.name;
+  $("pinWhen").textContent = `${ctx.when.local} ${ctx.when.tz} · ${ago(ctx.alert.ts)}`;
+
+  // 1) compass (iOS asks for permission, and only from a tap, which this is)
+  try {
+    if (typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission();
+  } catch {}
+  addEventListener("deviceorientationabsolute", onOrient);
+  addEventListener("deviceorientation", onOrient);
+
+  // 2) camera
+  try {
+    ar.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    $("cam").srcObject = ar.stream; $("sky").classList.add("hidden");
+  } catch { $("sky").classList.remove("hidden"); }
+
+  // 3) where you are: GPS, or else your card's usual spot (the earliest purchase in the timeline)
+  const fallback = () => {
+    const home = ctx.timeline[0];
+    ar.me = [+home.lat, +home.lon]; ar.meLabel = `from your usual area (${home.city})`;
+  };
+  fallback();
+  if (navigator.geolocation) {
+    ar.watch = navigator.geolocation.watchPosition((p) => { ar.me = [p.coords.latitude, p.coords.longitude]; ar.meLabel = "from where you are"; },
+      () => {}, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
+  }
+  ar.target = target;
+  requestAnimationFrame(frame);
+}
+
+function closeAR() {
+  ar.on = false; $("ar").classList.remove("on");
+  removeEventListener("deviceorientationabsolute", onOrient);
+  removeEventListener("deviceorientation", onOrient);
+  if (ar.stream) ar.stream.getTracks().forEach((t) => t.stop());
+  if (ar.watch != null) navigator.geolocation.clearWatch(ar.watch);
+  ar.stream = null; ar.watch = null;
+}
+$("arClose").onclick = closeAR;
+
+function onOrient(e) {
+  let h = null;
+  if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading;             // iOS: degrees from north
+  else if ((e.absolute || e.type === "deviceorientationabsolute") && e.alpha != null) h = 360 - e.alpha; // Android
+  if (h != null) {
+    h = (h + ((screen.orientation && screen.orientation.angle) || 0) + 360) % 360;
+    ar.heading = ar.hasCompass ? (ar.heading + wrap(h - ar.heading) * 0.2 + 360) % 360 : h;  // smooth the jitter
+    ar.hasCompass = true;
+  }
+  if (e.beta != null) { ar.pitch = ar.pitch * 0.8 + (e.beta - 90) * 0.2; ar.hasTilt = true; }
+}
+
+// No compass (laptop): drag left/right to look around.
+$("ar").addEventListener("pointerdown", (e) => { if (!ar.hasCompass) ar.drag = { x: e.clientX, h: ar.heading }; });
+addEventListener("pointermove", (e) => { if (ar.drag) ar.heading = (ar.drag.h - (e.clientX - ar.drag.x) * HFOV / innerWidth + 360) % 360; });
+addEventListener("pointerup", () => (ar.drag = null));
+
+function frame() {
+  if (!ar.on) return;
+  const W = innerWidth, H = innerHeight, b = bearing(ar.me, ar.target), km = distanceKm(ar.me, ar.target);
+  const off = wrap(b - ar.heading), horizon = H * 0.45 + (ar.hasTilt ? ar.pitch * H / VFOV : 0);
+  const visible = Math.abs(off) < HFOV / 2 + 4;
+  const pin = $("pin");
+  pin.style.display = visible ? "flex" : "none";
+  pin.style.transform = `translate(${W / 2 + off / HFOV * W}px, ${horizon}px) translate(-50%, -100%)`;
+  $("horizon").style.top = horizon + "px";
+  $("edgeL").style.display = !visible && off < 0 ? "block" : "none";
+  $("edgeR").style.display = !visible && off > 0 ? "block" : "none";
+  $("pinKm").textContent = km < 1 ? `${Math.round(km * 1000)} m away` : `${Math.round(km).toLocaleString()} km away`;
+  $("arMsg").textContent = ar.hasCompass
+    ? (visible ? `The purchase happened that way, ${compassName(b)} of you.` : "Turn around to find where it happened.")
+    : "No compass here, so drag left or right to look around.";
+  $("rHeading").textContent = `Facing ${Math.round(ar.heading)}°`;
+  $("rBearing").textContent = `Purchase ${Math.round(b)}° ${compassName(b)}`;
+  $("rFrom").textContent = ar.meLabel;
+  drawStrip(b); drawRadar(b, km);
+  requestAnimationFrame(frame);
+}
+
+function drawStrip(b) {
+  const pxPerDeg = innerWidth / HFOV, el = $("ticks"), names = { 0: "N", 90: "E", 180: "S", 270: "W" };
+  let html = "";
+  for (let d = Math.floor((ar.heading - 60) / 15) * 15; d <= ar.heading + 60; d += 15) {
+    const n = (d + 360) % 360;
+    html += `<span class="tick" style="left:${(d - ar.heading) * pxPerDeg}px">${names[n] || (n % 45 ? "·" : n)}</span>`;
+  }
+  html += `<span class="tick target" style="left:${wrap(b - ar.heading) * pxPerDeg}px;top:2px">▼</span>`;
+  el.innerHTML = html;
+}
+
+function drawRadar(b, km) {
+  const a = rad(wrap(b - ar.heading)), r = 40, x = Math.sin(a) * r, y = -Math.cos(a) * r;
+  const fov = rad(HFOV / 2), fx = Math.sin(fov) * 50, fy = -Math.cos(fov) * 50;
+  $("radar").innerHTML = `<circle r="50" fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.35)"/>
+    <path d="M0 0L${-fx} ${fy}A50 50 0 0 1 ${fx} ${fy}Z" fill="rgba(255,255,255,.12)"/>
+    <circle r="4" fill="#fff"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="#ff5a5a" stroke="#fff" stroke-width="2"/>
+    <text x="${(Math.sin(rad(-ar.heading)) * 40).toFixed(1)}" y="${(-Math.cos(rad(-ar.heading)) * 40 + 4).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="rgba(255,255,255,.8)">N</text>`;
+}
+
+load();
+if (!STATIC && txnId) setInterval(async () => {          // keep the status fresh if it's answered elsewhere
+  if (ar.on) return;
+  try { const r = await fetch(`/api/alerts/${encodeURIComponent(txnId)}/context`, { cache: "no-store" });
+    if (r.ok) { const next = await r.json(); if (JSON.stringify(next.answer) !== JSON.stringify(ctx.answer) || next.card.frozen !== ctx.card.frozen) { ctx = next; render(); } } } catch {}
+}, 5000);
+</script>
+</body>
+</html>

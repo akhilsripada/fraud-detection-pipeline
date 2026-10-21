@@ -42,6 +42,14 @@ TOOLS = [
      "description": "Inject a simulated fraud attack into the live stream to demonstrate detection.",
      "inputSchema": {"type": "object", "properties": {"kind": {"type": "string", "enum": [
          "card_testing", "impossible_travel", "amount_spike", "account_takeover"]}}, "required": ["kind"]}},
+    {"name": "cardholder_alert",
+     "description": "What the cardholder was told about a flagged purchase: the store, exact coordinates, the local "
+                    "time where it happened, the card's previous purchases with distance and speed between them, "
+                    "and whether the cardholder answered 'it was me' or froze the card. Give a cardholder id "
+                    "(their latest alert) or a transaction id.",
+     "inputSchema": {"type": "object", "properties": {
+         "user_id": {"type": "string", "description": "cardholder id like u01037"},
+         "txn_id": {"type": "string", "description": "transaction id (or its first characters)"}}}},
 ]
 
 
@@ -81,7 +89,32 @@ def call_tool(name: str, args: dict, opener=urllib.request.urlopen) -> str:
     if name == "simulate_attack":
         out = http("POST", "/api/ask", {"text": f"simulate {str(args.get('kind', '')).replace('_', ' ')}"}, opener)
         return out["text"] + link
+    if name == "cardholder_alert":
+        return cardholder_alert(args, opener)
     raise ValueError(f"unknown tool {name!r}")
+
+
+def cardholder_alert(args: dict, opener=urllib.request.urlopen) -> str:
+    uid, tid = str(args.get("user_id") or "").strip(), str(args.get("txn_id") or "").strip()
+    if not uid and not tid:
+        raise ValueError("give user_id or txn_id")
+    alerts = http("GET", "/api/alerts?" + urllib.parse.urlencode({"limit": 200, **({"user": uid} if uid else {})}), opener=opener)
+    match = next((a for a in alerts if not tid or a["txn_id"].startswith(tid)), None)
+    if match is None:
+        return f"No flagged purchase found for {uid or tid}."
+    c = http("GET", f"/api/alerts/{match['txn_id']}/context", opener=opener)
+    a, m, ans = c["alert"], c["merchant"], c.get("answer")
+    status = ("card frozen by the cardholder" if ans and ans["verdict"] == "not_mine" else
+              "cardholder confirmed it was them" if ans else "waiting for the cardholder to answer")
+    lines = [f"{a['decision']} ${a['amount']:,.2f} at {m['name']} ({m['lat']:.4f}, {m['lon']:.4f}), "
+             f"{c['when']['local']} {c['when']['tz']} local time ({c['when']['utc']}). Status: {status}.",
+             "Card's recent purchases:"]
+    for t in c["timeline"]:
+        gap = t.get("gap")
+        hop = f"; {gap['km']:,} km after the previous one, {gap['minutes']} min later" if gap and gap["km"] >= 30 else ""
+        lines.append(f"- {t['when']['local']} {t['when']['tz']}: ${t['amount']:,.2f} at {t['merchant']}{hop}"
+                     + (" <- this one" if t.get("this") else ""))
+    return "\n".join(lines) + f"\n\nCardholder's alert page: {BASE}/customer/{a['txn_id']}"
 
 
 def handle(msg: dict, opener=urllib.request.urlopen) -> dict | None:

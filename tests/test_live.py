@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -107,7 +108,8 @@ class LiveServerTests(unittest.TestCase):
         self.assertEqual(init["result"]["serverInfo"]["name"], "sentinel")
         self.assertIsNone(sentinel_mcp.handle({"jsonrpc": "2.0", "method": "notifications/initialized"}))
         tools = sentinel_mcp.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]["tools"]
-        self.assertEqual({t["name"] for t in tools}, {"ask_sentinel", "recent_alerts", "fraud_stats", "simulate_attack"})
+        self.assertEqual({t["name"] for t in tools},
+                         {"ask_sentinel", "recent_alerts", "fraud_stats", "simulate_attack", "cardholder_alert"})
         out = sentinel_mcp.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
                                    "params": {"name": "ask_sentinel", "arguments": {"question": "give me a summary"}}})
         text = out["result"]["content"][0]["text"]
@@ -116,6 +118,31 @@ class LiveServerTests(unittest.TestCase):
         bad = sentinel_mcp.handle({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "nope"}})
         self.assertTrue(bad["result"]["isError"])
         self.assertEqual(sentinel_mcp.handle({"jsonrpc": "2.0", "id": 5, "method": "x"})["error"]["code"], -32601)
+
+
+    def test_cardholder_alert_flow(self):
+        import sentinel_mcp
+        sentinel_mcp.BASE = self.base
+        alert = self.get("/api/alerts?limit=1")[0]
+        tid = alert["txn_id"]
+        ctx = self.get(f"/api/alerts/{tid}/context")
+        self.assertEqual(ctx["alert"]["txn_id"], tid)
+        self.assertTrue(ctx["merchant"]["name"].endswith(alert["city"]))
+        self.assertTrue(ctx["timeline"][-1]["this"])
+        self.assertIn("utc", ctx["when"])
+        with urllib.request.urlopen(f"{self.base}/customer/{tid}", timeout=5) as r:
+            self.assertIn(b"Did you make this purchase", r.read())
+        out = self.post(f"/api/alerts/{tid}/feedback", {"verdict": "not_mine"})
+        self.assertEqual((out["status"], out["frozen"]), ("recorded", True))
+        self.assertTrue(self.get(f"/api/alerts/{tid}/context")["card"]["frozen"])
+        self.assertIn(tid, [f["txn_id"] for f in self.get("/api/feedback")])
+        text = sentinel_mcp.call_tool("cardholder_alert", {"txn_id": tid[:8]})
+        self.assertIn("card frozen by the cardholder", text)
+        self.assertIn(f"/customer/{tid}", text)
+        self.assertFalse(self.post(f"/api/cards/{alert['user_id']}/unfreeze", {})["frozen"])
+        for path, body in ((f"/api/alerts/{tid}/feedback", {"verdict": "perhaps"}), ("/api/alerts/nope/feedback", {"verdict": "mine"})):
+            with self.assertRaises(urllib.error.HTTPError):
+                self.post(path, body)
 
 
 class McpOfflineTests(unittest.TestCase):

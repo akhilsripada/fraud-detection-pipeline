@@ -6,9 +6,11 @@
 
 Sentinel scores card transactions for fraud **as they stream in**, blocks the suspicious ones in well under a millisecond, and **explains every decision in plain English**. Ask it *"why was u01037 blocked?"* on the dashboard, from Claude or ChatGPT through its MCP server, or watch attacks land on an **AR globe** on your desk.
 
+When it blocks a purchase, the **cardholder** gets a *"Was this you?"* alert. It shows exactly where and when the purchase happened, including the store, its coordinates, and the local time there next to yours. Tap **Show me where** and the phone's camera puts a pin in the real direction of the store, using GPS and the compass. **"No, freeze my card"** blocks everything after it, and both answers are saved as labelled training data.
+
 It runs two ways from the same code: on your laptop with one command, or serverless on AWS (Kinesis, Lambda, DynamoDB, API Gateway WebSockets, SNS, Firehose, S3), defined entirely in CDK.
 
-**[Try the live demo](https://akhilsripada.github.io/fraud-detection-pipeline/)** (runs in your browser) · **[AR globe](https://akhilsripada.github.io/fraud-detection-pipeline/ar/)**
+**[Try the live demo](https://akhilsripada.github.io/fraud-detection-pipeline/)** (runs in your browser; ask *"why was the last transaction blocked?"* and open the cardholder alert) · **[AR globe](https://akhilsripada.github.io/fraud-detection-pipeline/ar/)**
 
 | | |
 |---|---|
@@ -46,7 +48,34 @@ Questions it understands: *why was u01037 blocked?* · *why was the last transac
 {"mcpServers": {"sentinel": {"command": "python3", "args": ["/full/path/to/fraud-detection-pipeline/mcp/sentinel_mcp.py"]}}}
 ```
 
-Tools: `ask_sentinel`, `recent_alerts`, `fraud_stats`, `simulate_attack`. Every answer ends with a link to the live dashboard.
+Tools: `ask_sentinel`, `recent_alerts`, `fraud_stats`, `simulate_attack`, `cardholder_alert`. Every answer ends with a link to the live dashboard.
+
+## The cardholder's side: "Was this you?"
+
+Every flagged row on the dashboard has a **card alert ↗** link (`/customer/<txn_id>`). That's the page the cardholder sees on their phone:
+
+| | |
+|---|---|
+| **Where** | Store name, city and exact coordinates, plus a map of the card's last purchases with the path between them |
+| **When** | Local time where the purchase happened (`Europe/London`, `Asia/Kolkata`...), your own time, and how long ago |
+| **Why** | The rules that fired, in plain words, e.g. *"14,697 km from the purchase before, 25 min later (35,252 km/h, faster than any plane)"* |
+| **Show me where** | Camera view with a pin over the real direction of the store. Bearing comes from GPS, facing comes from the compass (`webkitCompassHeading` on iPhone, `deviceorientationabsolute` on Android), and the pin's height follows the phone's tilt. Off-screen, it says which way to turn. On a laptop, drag to look around. |
+| **Answer** | **Yes, it was me** records a false alarm (label 0). **No, freeze my card** records fraud (label 1) and blocks every later purchase on the card (`card_frozen`). Answers are idempotent and survive restarts (SQLite). |
+
+```bash
+curl localhost:8000/api/alerts/<txn_id>/context                               # where, when, the card's timeline
+curl -X POST localhost:8000/api/alerts/<txn_id>/feedback -d '{"verdict":"not_mine"}'
+curl localhost:8000/api/feedback                                              # answers as labelled examples
+curl -X POST localhost:8000/api/cards/<user_id>/unfreeze
+```
+
+**Push to your phone (free):** install the [ntfy](https://ntfy.sh) app, subscribe to a topic name only you know, then run
+`python run.py --host 0.0.0.0 --notify your-topic --public-url http://<laptop-ip>:8000`.
+Each blocked purchase sends *"$812.40 in London, GB was blocked on your card. Was this you?"*, and tapping it opens the alert. Pushes are limited to one every 20 seconds.
+
+> Phone browsers only allow the camera and compass on HTTPS pages, so for the AR view on a phone use the live demo, which is served over HTTPS. On the laptop itself, `localhost` works.
+
+The answers close the loop. Precision measured from cardholder replies is the number a real fraud team watches, and the labelled rows from `/api/feedback` are exactly what a retraining job needs. Metrics on the dashboard still measure the model alone: a frozen card's blocks aren't counted as model hits.
 
 ---
 
@@ -158,10 +187,12 @@ src/fraud_pipeline/      # deployed to Lambda as-is (no third-party deps)
   config/model.json      #   trained model + thresholds
   assistant.py           #   plain-English questions -> intents -> answers from real features
   store.py               #   SQLite alert store for the self-hosted version
+  customer.py            #   cardholder side: timeline, local time, answers, card freeze, ntfy push
 ml/train.py              # simulate -> featurize -> train -> verify export -> report
 run.py                   # one-command start: server + dashboard + browser
 local/demo_server.py     # pipeline, dashboard, assistant and HTTP API, standard library only
 dashboard/index.html     # live dashboard with Ask Sentinel (SSE locally, WebSocket on AWS)
+dashboard/customer.html  # cardholder alert: "was this you?", map, camera + compass "show me where"
 mcp/sentinel_mcp.py      # MCP server so AI assistants can query the live stream
 ar/index.html            # three.js globe with WebXR placement on real surfaces
 site/index.html          # browser-only demo published to GitHub Pages
@@ -169,7 +200,7 @@ infra/                   # AWS CDK app (Python)
 scripts/producer.py      # stream simulated traffic into Kinesis
 scripts/replay_dlq.py    # re-drive failed records from the DLQ
 loadtest/bench.py        # throughput / latency benchmark
-tests/                   # 53 tests: unit, AWS fakes, live server + MCP end to end
+tests/                   # 65 tests: unit, AWS fakes, live server + MCP end to end
 docs/                    # Athena queries
 ```
 
@@ -181,7 +212,7 @@ Requires Python 3.11+. The pipeline itself uses only the standard library.
 
 ```bash
 python run.py                        # http://localhost:8000
-python -m unittest discover -s tests # 53 tests, a few seconds
+python -m unittest discover -s tests # 65 tests, a few seconds
 python loadtest/bench.py             # benchmark
 ```
 

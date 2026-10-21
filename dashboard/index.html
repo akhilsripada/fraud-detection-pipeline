@@ -61,6 +61,8 @@
   .badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 5px; }
   .BLOCK { color: var(--block); background: var(--block-bg); }
   .REVIEW { color: var(--review); background: var(--review-bg); }
+  a.cust { font-size: 11px; color: var(--accent); text-decoration: none; white-space: nowrap; }
+  a.cust:hover { text-decoration: underline; }
   .truth-fraud { color: var(--block); } .truth-legit { color: var(--ok); }
   .reasons { color: var(--muted); font-size: 12px; }
   .feed { max-height: 460px; overflow: auto; }
@@ -275,7 +277,8 @@
     tr.className = "new";
     tr.innerHTML = `
       <td class="mono">${new Date(a.ts * 1000).toLocaleTimeString()}</td>
-      <td><span class="badge ${esc(a.decision)}">${esc(a.decision)}</span></td>
+      <td><span class="badge ${esc(a.decision)}">${esc(a.decision)}</span>${wsUrl ? "" :
+        `<br><a class="cust" href="/customer/${encodeURIComponent(a.txn_id)}" target="_blank" rel="noopener" title="What the cardholder sees">card&nbsp;alert&nbsp;↗</a>`}</td>
       <td class="num mono">${(a.risk_score * 100).toFixed(0)}</td>
       <td class="num">$${Number(a.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       <td class="mono">${esc(a.user_id)}</td>
@@ -284,7 +287,7 @@
       <td class="reasons">${(a.rules_fired || []).map(esc).join(", ") || "model"}</td>
       <td class="hide-sm">${truth}</td>`;
     tr.title = "Ask why";
-    tr.addEventListener("click", () => ask(`Why was ${a.user_id} flagged?`));
+    tr.addEventListener("click", (e) => { if (!e.target.closest("a")) ask(`Why was ${a.user_id} flagged?`); });
     tbody.prepend(tr);
     rows++;
     if (pendingUser && a.user_id === pendingUser) { pendingUser = null; setTimeout(() => ask(`Why was ${a.user_id} blocked?`), 600); }

@@ -506,10 +506,12 @@ const Sentinel = (() => {
   function process(t, live) {
     const s = score(t);
     stats.scored++;
+    const u = t.user, before = (u.hist || []).slice(-5);
+    u.hist = before.concat({ id: t.id, ts: t.ts, amount: t.amount, city: t.city, cat: t.cat, decision: s.decision });
     if (s.decision === "ALLOW") return;
     stats.flagged++;
     if (s.decision === "BLOCK") stats.blocked++;
-    const a = { ...t, ...s, uid: t.user.id, usual: t.user.mean, born: live ? performance.now() : -1e9, fresh: live };
+    const a = { ...t, ...s, uid: t.user.id, usual: t.user.mean, hist: before, born: live ? performance.now() : -1e9, fresh: live };
     alerts.unshift(a);
     if (alerts.length > 80) alerts.length = 80;
     const travel = s.reasons.some((r) => r.code === "impossible_travel" || r.code === "new_device_new_country");
@@ -670,6 +672,51 @@ const Sentinel = (() => {
     if (feedDirty) renderFeed();
   }
 
+  // ------------------------------------------------------------------ cardholder alert link
+  // Packs one alert into the URL of customer.html, the cardholder's "was this you?" page with the
+  // AR "show me where" view. The local server serves the same page from /api/alerts/<id>/context.
+  const TZ = { London: "Europe/London", Tokyo: "Asia/Tokyo", Sydney: "Australia/Sydney", "São Paulo": "America/Sao_Paulo",
+    Mumbai: "Asia/Kolkata", Hyderabad: "Asia/Kolkata", Lagos: "Africa/Lagos", Singapore: "Asia/Singapore", Moscow: "Europe/Moscow",
+    Seattle: "America/Los_Angeles", "San Francisco": "America/Los_Angeles", "New York": "America/New_York", Tampa: "America/New_York",
+    Atlanta: "America/New_York", Toronto: "America/Toronto", "Mexico City": "America/Mexico_City", Denver: "America/Denver",
+    Chicago: "America/Chicago", Austin: "America/Chicago", Paris: "Europe/Paris", Berlin: "Europe/Berlin", Bucharest: "Europe/Bucharest" };
+  const SHOPS = { grocery: ["Fresh Market", "Corner Grocer", "Green Basket"], restaurant: ["Harbor Grill", "Noodle House", "Taco Social"],
+    gas: ["Metro Fuel", "QuickStop Gas"], pharmacy: ["CityCare Pharmacy", "Wellness Rx"], retail: ["Style Depot", "Home Goods Plus"],
+    travel: ["SkyWay Travel", "Airport Duty Free"], electronics: ["TechHub Electronics", "Circuit Point", "Gadget Galaxy"],
+    jewelry: ["Golden Hour Jewelers", "Facet Fine Jewelry"], "gift cards": ["GiftCard Express", "Card Kiosk 24"], digital: ["AppVault", "PixelPlay Store"] };
+  const hashOf = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+  function spot(x) {                     // a store somewhere in the city, the same one every time for this purchase
+    const h = hashOf(x.id), list = SHOPS[x.cat] || SHOPS[Object.keys(SHOPS).find((k) => String(x.cat).startsWith(k))] || ["Store"];
+    return { name: `${list[h % list.length]}, ${x.city.name}`, lat: +(x.city.lat + ((h % 997) / 997 - 0.5) * 0.12).toFixed(4),
+      lon: +(x.city.lon + (((h >> 10) % 991) / 991 - 0.5) * 0.12).toFixed(4) };
+  }
+  function whenAt(ts, city) {
+    const f = (o) => new Intl.DateTimeFormat("en-US", { timeZone: TZ[city] || "UTC", ...o }).format(new Date(ts * 1000));
+    return { local: f({ weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }),
+      tz: (f({ timeZoneName: "short" }).split(" ").pop()) };
+  }
+  function customerLink(a) {
+    const rows = a.hist.concat({ id: a.id, ts: a.ts, amount: a.amount, city: a.city, cat: a.cat, decision: a.decision, me: true }).sort((x, y) => x.ts - y.ts || (x.me ? 1 : y.me ? -1 : 0));
+    let prev = null;
+    const timeline = rows.map((x) => {
+      const p = spot(x), row = { txn_id: x.id, ts: x.ts, amount: x.amount, city: x.city.name, country: x.city.country, lat: p.lat, lon: p.lon,
+        merchant: p.name, decision: x.decision, when: whenAt(x.ts, x.city.name), ...(x.me ? { this: true } : {}) };
+      if (prev) {
+        const km = hav(prev.lat, prev.lon, p.lat, p.lon), minutes = Math.max(0, (x.ts - prev.ts) / 60);
+        row.gap = { km: Math.round(km), minutes: Math.round(minutes * 10) / 10, kmh: km > 1 ? Math.round(km / Math.max(minutes / 60, 1 / 120)) : 0 };
+      }
+      prev = { lat: p.lat, lon: p.lon, ts: x.ts };
+      return row;
+    });
+    const me = timeline.find((t) => t.this);
+    const ctx = { alert: { txn_id: a.id, user_id: a.uid, ts: a.ts, amount: a.amount, city: a.city.name, country: a.city.country, lat: me.lat, lon: me.lon,
+        merchant_category: a.cat, decision: a.decision, rules_fired: a.reasons.map((r) => r.code) },
+      merchant: { name: me.merchant, category: a.cat, lat: me.lat, lon: me.lon, city: a.city.name, country: a.city.country },
+      when: me.when, timeline, card: { frozen: false }, answer: null };
+    const bytes = new TextEncoder().encode(JSON.stringify(ctx));
+    return "customer.html?d=" + btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
   // ------------------------------------------------------------------ commands
   function explain(a) {
     const cat = a.cat === "gift cards" ? "gift card" : a.cat, art = /^[aeiou]/.test(cat) ? "an" : "a";
@@ -679,7 +726,8 @@ const Sentinel = (() => {
       ? `<div class="quote">Text to the customer: “We blocked a ${money(a.amount)} charge in ${esc(a.city.name)}. Reply YES if this was you, or NO and we'll freeze the card.”</div>`
       : `<p>Next step: an analyst checks it within 15 minutes. The card keeps working in the meantime.</p>`;
     const truth = `<p class="note">Simulator ground truth: ${a.label ? "fraud (" + esc(NICE[a.label]) + ")" : "a genuine purchase, so this one is a false alarm"}.</p>`;
-    return head + why + next + truth;
+    const link = `<p><a href="${customerLink(a)}" target="_blank" rel="noopener">See what the cardholder gets: where and when it happened, with “show me where” AR ↗</a></p>`;
+    return head + why + next + link + truth;
   }
   function handle(text) {
     const it = NLU.sentinel(text);
