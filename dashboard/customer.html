@@ -409,7 +409,7 @@ function frame() {
   $("arMsg").textContent = ar.hasCompass
     ? (visible ? `The purchase happened that way, ${compassName(b)} of you.` : "Turn around to find where it happened.")
     : "No compass here, so drag left or right to look around.";
-  $("rHeading").textContent = `Facing ${Math.round(ar.heading)}°`;
+  $("rHeading").textContent = `Facing ${Math.round(((ar.heading % 360) + 360) % 360) % 360}°`;
   $("rBearing").textContent = `Purchase ${Math.round(b)}° ${compassName(b)}`;
   $("rFrom").textContent = ar.meLabel;
   drawStrip(b); drawRadar(b, km);
@@ -428,12 +428,12 @@ function drawStrip(b) {
 }
 
 function drawRadar(b, km) {
-  const a = rad(wrap(b - ar.heading)), r = 40, x = Math.sin(a) * r, y = -Math.cos(a) * r;
+  const a = rad(wrap(b - ar.heading)), r = 30, x = Math.sin(a) * r, y = -Math.cos(a) * r;
   const fov = rad(HFOV / 2), fx = Math.sin(fov) * 50, fy = -Math.cos(fov) * 50;
   $("radar").innerHTML = `<circle r="50" fill="rgba(0,0,0,.5)" stroke="rgba(255,255,255,.35)"/>
     <path d="M0 0L${-fx} ${fy}A50 50 0 0 1 ${fx} ${fy}Z" fill="rgba(255,255,255,.12)"/>
     <circle r="4" fill="#fff"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="#ff5a5a" stroke="#fff" stroke-width="2"/>
-    <text x="${(Math.sin(rad(-ar.heading)) * 40).toFixed(1)}" y="${(-Math.cos(rad(-ar.heading)) * 40 + 4).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="rgba(255,255,255,.8)">N</text>`;
+    <text x="${(Math.sin(rad(-ar.heading)) * 43).toFixed(1)}" y="${(-Math.cos(rad(-ar.heading)) * 43 + 4).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="rgba(255,255,255,.8)">N</text>`;
 }
 
 load();
