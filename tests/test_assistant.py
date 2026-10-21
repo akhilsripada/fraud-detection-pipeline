@@ -27,6 +27,11 @@ class ParseTests(unittest.TestCase):
             "run a card testing attack": {"intent": "attack", "kind": "card_testing"},
             "give me a summary": {"intent": "report"},
             "show all": {"intent": "clear"},
+            "tell me the latest transaction that is blocked": {"intent": "explain", "user": None},
+            "what got flagged recently": {"intent": "explain", "user": None},
+            "show me the most recent suspicious purchase": {"intent": "explain", "user": None},
+            "where did it happen?": {"intent": "explain", "user": None},
+            "what's going on": {"intent": "report"},
             "what's the weather": {"intent": "unknown"},
         }
         for text, want in cases.items():

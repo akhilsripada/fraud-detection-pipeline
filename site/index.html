@@ -252,11 +252,14 @@ const NLU = (() => {
       return { intent: "attack", kind: attackKind(t) };
     if (/\b(why|explain|reason|what happened|tell me about)\b/.test(t) || user)
       return { intent: "explain", user };
-    if (/\b(report|summary|summari[sz]e|today|so far|what changed|overview|how many|stats)\b/.test(t))
+    if (/\b(report|summary|summari[sz]e|today|so far|what changed|overview|how many|stats|statistics|going on|status|overall|numbers|totals?)\b/.test(t))
       return { intent: "report" };
     if (/\b(clear|reset|show all|everything|all regions|whole world|everywhere)\b/.test(t))
       return { intent: "clear" };
     for (const [region, re] of REGION_WORDS) if (re.test(t)) return { intent: "region", region };
+    // everyday wording: "tell me the latest transaction that is blocked", "what got flagged?", "where did it happen?"
+    if (/\b(latest|last|recent|newest|most recent|blocked|flagged|declined|denied|stopped|suspicious|fraudulent|alert|alerts|transaction|transactions|purchase|charge|where|when)\b/.test(t))
+      return { intent: "explain", user: null };
     return { intent: "unknown" };
   }
 

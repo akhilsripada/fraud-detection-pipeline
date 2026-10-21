@@ -76,13 +76,17 @@ def parse_intent(text: str) -> dict:
         return {"intent": "attack", "kind": _attack_kind(t)}
     if re.search(r"\b(why|explain|reason|what happened|tell me about)\b", t) or user:
         return {"intent": "explain", "user": user}
-    if re.search(r"\b(report|summary|summari[sz]e|today|so far|what changed|overview|how many|stats)\b", t):
+    if re.search(r"\b(report|summary|summari[sz]e|today|so far|what changed|overview|how many|stats|statistics|"
+                 r"going on|status|overall|numbers|totals?)\b", t):
         return {"intent": "report"}
     if re.search(r"\b(clear|reset|show all|everything|all regions|whole world|everywhere)\b", t):
         return {"intent": "clear"}
     for region, pattern in _REGION_WORDS:
         if re.search(pattern, t):
             return {"intent": "region", "region": region}
+    if re.search(r"\b(latest|last|recent|newest|most recent|blocked|flagged|declined|denied|stopped|suspicious|fraudulent|"
+                 r"alert|alerts|transaction|transactions|purchase|charge|where|when)\b", t):
+        return {"intent": "explain", "user": None}  # "tell me the latest blocked transaction", "what got flagged?"
     return {"intent": "unknown"}
 
 
