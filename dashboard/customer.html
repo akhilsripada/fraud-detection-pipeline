@@ -172,7 +172,12 @@ async function load() {
 
 async function picker() {
   let alerts = [];
-  try { alerts = await (await fetch("/api/alerts?limit=12", { cache: "no-store" })).json(); } catch {}
+  try { alerts = await (await fetch("/api/alerts?limit=12", { cache: "no-store" })).json(); }
+  catch {                                   // static demo site: no server to list alerts from
+    $("app").innerHTML = `<div class="top"><b>Sentinel</b><span>card alert</span></div><div class="card"><h1>No alert selected</h1>
+      <p class="muted">Open the <a href="./">live demo</a>, ask <i>“why was the last transaction blocked?”</i>, and follow the cardholder alert link.</p></div>`;
+    return;
+  }
   $("app").innerHTML = `<div class="top"><b>Sentinel</b><span>card alerts</span></div><div class="card picker"><h2>Recent alerts</h2>${
     alerts.length ? alerts.map((a) => `<a href="/customer/${encodeURIComponent(a.txn_id)}"><span>${esc(a.user_id)} · ${esc(a.city)}, ${esc(a.country)}</span>
       <span><b>${money(a.amount)}</b> <span class="pill ${esc(a.decision)}">${a.decision === "BLOCK" ? "Blocked" : "Held"}</span></span></a>`).join("")
