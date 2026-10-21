@@ -12,6 +12,7 @@ import argparse
 import socket
 import subprocess
 import sys
+import threading
 import time
 import webbrowser
 from pathlib import Path
@@ -43,6 +44,26 @@ def main():
     if sys.version_info < (3, 11):
         sys.exit(f"Swipestop needs Python 3.11 or newer; this is {sys.version.split()[0]}.")
     tunnel_proc, public = None, None
+    state = {"proc": None}
+
+    def watch_tunnel():
+        # Free share links drop when the Mac sleeps, the network changes or the provider ends the session.
+        # Notice that and open a fresh one, so the person running the demo isn't left with a dead link.
+        while True:
+            time.sleep(3)
+            p = state["proc"]
+            if p is None or p.poll() is None:
+                continue
+            print("\n  The share link stopped (the provider closed it or the network dropped). Opening a new one...")
+            try:
+                state["proc"], url, _ = tunnel.start(args.port)
+                print(f"\n  New share link:\n\n      {url}\n\n  The old link no longer works; send this one instead.\n")
+            except RuntimeError as e:
+                print(f"  {e}\n  Trying again in 15 seconds.")
+                state["proc"] = None
+                time.sleep(15)
+                state["proc"] = p        # poll() still reports exited, so the loop retries
+
     if args.share:
         sys.path.insert(0, str(ROOT / "local"))
         import tunnel
@@ -51,6 +72,9 @@ def main():
             tunnel_proc, public, provider = tunnel.start(args.port)
         except RuntimeError as e:
             print(f"  {e}\n  Continuing without a share link.")
+        if tunnel_proc:
+            state["proc"] = tunnel_proc
+            threading.Thread(target=watch_tunnel, daemon=True).start()
         if public and "--public-url" not in extra:
             extra += ["--public-url", public]       # phone push alerts link to the shared page
     cmd = [sys.executable, str(ROOT / "local" / "demo_server.py"), "--port", str(args.port), "--host", args.host, *extra]
@@ -62,15 +86,16 @@ def main():
                   f"    AR globe      {url}/ar\n    API           {url}/api/stats\n")
             if public:
                 print(f"  Share link (works on any phone, camera AR included):\n\n      {public}\n\n"
-                      "  Anyone with this link can use the demo until you press Ctrl+C.\n")
+                      "  Anyone with this link can use the demo until you press Ctrl+C.\n"
+                      "  Keep this window open and the Mac awake: on macOS, `caffeinate -i python3 run.py --share`.\n")
             if not args.no_browser:
                 webbrowser.open(url)
         proc.wait()
     except KeyboardInterrupt:
         proc.terminate()
     finally:
-        if tunnel_proc:
-            tunnel_proc.terminate()
+        if state["proc"]:
+            state["proc"].terminate()
 
 
 if __name__ == "__main__":

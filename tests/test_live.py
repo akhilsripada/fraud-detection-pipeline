@@ -90,6 +90,21 @@ class LiveServerTests(unittest.TestCase):
             with urllib.request.urlopen(self.base + path, timeout=5) as r:
                 self.assertIn(marker, r.read(), path)
 
+    def test_event_stream_is_chunked_so_proxies_pass_it_through(self):
+        import http.client
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("GET", "/events")
+        r = conn.getresponse()
+        self.assertEqual(r.getheader("Transfer-Encoding"), "chunked")
+        self.assertEqual(r.getheader("X-Accel-Buffering"), "no")
+        deadline, got = time.time() + 8, None
+        while time.time() < deadline and got is None:
+            line = r.readline().decode()                     # http.client decodes the chunk framing
+            if line.startswith("data: "):
+                got = json.loads(line[6:])
+        conn.close()
+        self.assertIn(got["type"], ("alert", "stats", "txn", "info"))
+
     def test_alerts_carry_their_explanation_and_tape_samples_stream(self):
         alert = self.engine.list_alerts(1)[0]
         self.assertTrue(alert["why"])                          # the case file renders the engine's own reasons

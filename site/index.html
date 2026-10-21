@@ -1089,8 +1089,25 @@ const Swipestop = (() => {
     alerts.length = 0; arcs.length = 0; queue.length = 0; tapeEl.innerHTML = "";
     setStats(summary);
     summary.recent.forEach((m) => addLive(m, false));
+    // Live updates over Server-Sent Events. If nothing arrives for 6 s (a network or tunnel that blocks
+    // streaming), poll /api/summary every 2 s instead; the engine sends stats every second, so silence means blocked.
+    let lastMsg = performance.now(), polling = null;
+    const poll = async () => {
+      try {
+        const r = await fetch("/api/summary", { cache: "no-store" });
+        const sum = await r.json();
+        setStats(sum);
+        sum.recent.slice().forEach((m) => addLive(m, Date.now() / 1000 - m.ts < 20));
+      } catch {}
+    };
+    setInterval(() => {
+      const quiet = performance.now() - lastMsg > 6000;
+      if (quiet && !polling) polling = setInterval(poll, 2000);
+      if (!quiet && polling) { clearInterval(polling); polling = null; }
+    }, 2000);
     const es = new EventSource("/events");
     es.onmessage = (e) => {
+      lastMsg = performance.now();
       let m;
       try { m = JSON.parse(e.data); } catch { return; }
       if (m.type === "alert") addLive(m, Date.now() / 1000 - m.ts < 20);

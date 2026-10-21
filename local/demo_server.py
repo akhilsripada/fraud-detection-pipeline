@@ -302,24 +302,33 @@ def make_handler(engine: Engine, hub: Hub, assistant: Assistant):
             self._send(404, b'{"error":"not found"}')
 
         def _stream(self):
+            # Server-Sent Events with HTTP/1.1 chunked framing. Without a length or chunk framing a browser on
+            # the same machine copes, but proxies and share tunnels buffer the stream or drop it, so the page
+            # opens and then never updates. The padding comment pushes past proxies that wait for a first 2 KB.
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Connection", "keep-alive")
+            self.send_header("Cache-Control", "no-cache, no-transform")
+            self.send_header("X-Accel-Buffering", "no")
+            self.send_header("Transfer-Encoding", "chunked")
             self.end_headers()
+
+            def send(text: str):
+                data = text.encode()
+                self.wfile.write(f"{len(data):X}\r\n".encode() + data + b"\r\n")
+                self.wfile.flush()
+
             q = hub.subscribe()
             try:
-                for msg in list(engine.recent_alerts):  # backfill so the feed isn't empty
-                    self.wfile.write(f"data: {json.dumps(msg)}\n\n".encode())
-                self.wfile.flush()
+                send(":" + " " * 2048 + "\nretry: 2000\n\n")
+                backfill = "".join(f"data: {json.dumps(msg)}\n\n" for msg in list(engine.recent_alerts))
+                if backfill:                                  # so the feed isn't empty
+                    send(backfill)
                 while True:
                     try:
-                        data = q.get(timeout=15)
-                        self.wfile.write(f"data: {data}\n\n".encode())
+                        send(f"data: {q.get(timeout=15)}\n\n")
                     except queue.Empty:
-                        self.wfile.write(b": keep-alive\n\n")
-                    self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
+                        send(": keep-alive\n\n")
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
             finally:
                 hub.unsubscribe(q)
