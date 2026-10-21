@@ -31,6 +31,8 @@ python3 run.py        # on Windows: python run.py
 
 Your browser opens http://localhost:8000, the same page as the live demo but connected to the real engine: the trained model, the live stream and the SQLite database. Press **Run an attack** and watch it land on the receipt tape, get declined, and get explained in the case file. Open the cardholder's alert from there. The ops metrics view (throughput, latency, live precision and recall) is at http://localhost:8000/console. With Docker instead: `docker compose up`.
 
+**On your phone, or for someone else:** `python3 run.py --share` also prints a temporary `https://` link to the engine on your laptop. Open it on any phone, and the cardholder page's camera, compass and GPS "show me where" view works too, since phones only allow those on https. It uses a free Cloudflare quick tunnel if `cloudflared` is installed (`brew install cloudflared`), and otherwise [localhost.run](https://localhost.run) over the `ssh` that Mac, Linux and Windows already have. No account is needed. The link works only while it's running; Ctrl+C closes it.
+
 ## Talk to it
 
 | Where | How |
@@ -191,6 +193,7 @@ src/fraud_pipeline/      # deployed to Lambda as-is (no third-party deps)
 ml/train.py              # simulate -> featurize -> train -> verify export -> report
 run.py                   # one-command start: server + dashboard + browser
 local/demo_server.py     # pipeline, dashboard, assistant and HTTP API, standard library only
+local/tunnel.py          # --share: temporary https link via cloudflared or ssh (localhost.run)
 dashboard/index.html     # ops metrics console at /console (SSE locally, WebSocket on AWS)
 dashboard/customer.html  # cardholder alert: "was this you?", map, camera + compass "show me where"
 mcp/swipestop_mcp.py      # MCP server so AI assistants can query the live stream
@@ -200,7 +203,7 @@ infra/                   # AWS CDK app (Python)
 scripts/producer.py      # stream simulated traffic into Kinesis
 scripts/replay_dlq.py    # re-drive failed records from the DLQ
 loadtest/bench.py        # throughput / latency benchmark
-tests/                   # 65 tests: unit, AWS fakes, live server + MCP end to end
+tests/                   # 70 tests: unit, AWS fakes, live server + MCP end to end
 docs/                    # Athena queries
 ```
 
@@ -212,7 +215,7 @@ Requires Python 3.11+. The pipeline itself uses only the standard library.
 
 ```bash
 python3 run.py                       # http://localhost:8000
-python -m unittest discover -s tests # 65 tests, a few seconds
+python -m unittest discover -s tests # 70 tests, a few seconds
 python loadtest/bench.py             # benchmark
 ```
 
