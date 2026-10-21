@@ -4,34 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Card Alert</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500&display=swap">
 <style>
   :root {
-    --bg: #f4f5f7; --panel: #ffffff; --ink: #14171c; --muted: #646c78; --line: #e3e6ea;
-    --accent: #2453d6; --block: #c62f2f; --block-bg: #fde9e9; --review: #a86400; --review-bg: #fff3dc;
+    --bg: #f3f5f8; --panel: #ffffff; --ink: #0f1b2d; --muted: #5a687b; --line: #d8dee6;
+    --accent: #16294a; --block: #c62f2f; --block-bg: #fde9e9; --review: #a86400; --review-bg: #fff3dc;
     --ok: #1d7a46; --ok-bg: #e2f5ea; --land: #e6eaef; --land-edge: #cfd6df; --sea: #f8f9fb;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --mono: "Spline Sans Mono", ui-monospace, Menlo, Consolas, monospace;
+    --body: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0f1216; --panel: #171b21; --ink: #e8ebef; --muted: #8d96a3; --line: #262c34;
-      --accent: #7aa2ff; --block: #ff6b6b; --block-bg: #3a1c1f; --review: #f0b347; --review-bg: #3a2c12;
+      --bg: #0c1320; --panel: #121b2b; --ink: #e8edf4; --muted: #93a0b3; --line: #24304a;
+      --accent: #c9d6ee; --block: #ff6b6b; --block-bg: #3a1c1f; --review: #f0b347; --review-bg: #3a2c12;
       --ok: #57c98a; --ok-bg: #15301f; --land: #1f262f; --land-edge: #303a46; --sea: #13171c;
     }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+    font: 15.5px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
   main { max-width: 520px; margin: 0 auto; padding: 16px 16px calc(32px + env(safe-area-inset-bottom)); display: grid; gap: 12px; }
   .top { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
   .top b { color: var(--ink); }
+  .brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; letter-spacing: -.01em; }
   .top .spacer { flex: 1; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
   .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; }
   .BLOCK, .frozen { color: var(--block); background: var(--block-bg); }
   .REVIEW { color: var(--review); background: var(--review-bg); }
   .ALLOW, .mine { color: var(--ok); background: var(--ok-bg); }
-  h1 { font-size: 20px; margin: 10px 0 2px; letter-spacing: -0.01em; }
-  .amount { font-size: 38px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin: 6px 0 0; }
+  h1 { font-size: 22px; font-weight: 700; margin: 10px 0 2px; letter-spacing: -0.02em; }
+  .amount { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin: 6px 0 0; }
   .merchant { font-size: 16px; font-weight: 600; }
   .muted { color: var(--muted); }
   .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin-top: 14px; font-size: 14px; }
@@ -100,7 +105,7 @@
 </head>
 <body>
 <main id="app">
-  <div class="top"><b>Sentinel</b><span>card alert</span><span class="spacer"></span><span id="mode"></span></div>
+  <div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</b><span>card alert</span><span class="spacer"></span><span id="mode"></span></div>
   <div class="card"><p class="muted">Loading the alert…</p></div>
 </main>
 
@@ -174,11 +179,11 @@ async function picker() {
   let alerts = [];
   try { alerts = await (await fetch("/api/alerts?limit=12", { cache: "no-store" })).json(); }
   catch {                                   // static demo site: no server to list alerts from
-    $("app").innerHTML = `<div class="top"><b>Sentinel</b><span>card alert</span></div><div class="card"><h1>No alert selected</h1>
+    $("app").innerHTML = `<div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</b><span>card alert</span></div><div class="card"><h1>No alert selected</h1>
       <p class="muted">Open the <a href="./">live demo</a>, ask <i>“why was the last transaction blocked?”</i>, and follow the cardholder alert link.</p></div>`;
     return;
   }
-  $("app").innerHTML = `<div class="top"><b>Sentinel</b><span>card alerts</span></div><div class="card picker"><h2>Recent alerts</h2>${
+  $("app").innerHTML = `<div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</b><span>card alerts</span></div><div class="card picker"><h2>Recent alerts</h2>${
     alerts.length ? alerts.map((a) => `<a href="/customer/${encodeURIComponent(a.txn_id)}"><span>${esc(a.user_id)} · ${esc(a.city)}, ${esc(a.country)}</span>
       <span><b>${money(a.amount)}</b> <span class="pill ${esc(a.decision)}">${a.decision === "BLOCK" ? "Blocked" : "Held"}</span></span></a>`).join("")
     : `<p class="muted">No alerts yet. Inject an attack from the dashboard.</p>`}</div>`;
@@ -209,7 +214,7 @@ function render() {
   const reasons = (a.rules_fired || []).map((r) => REASONS[r]).filter(Boolean);
   if (!reasons.length) reasons.push("This purchase doesn't match how you normally use your card.");
   $("app").innerHTML = `
-    <div class="top"><b>Sentinel</b><span>card alert · ${esc(a.user_id)}</span><span class="spacer"></span><span>${modeLabel}</span></div>
+    <div class="top"><b class="brand"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sentinel</b><span>card alert · ${esc(a.user_id)}</span><span class="spacer"></span><span>${modeLabel}</span></div>
     <div class="card">
       <span class="pill ${cls}">${label}</span>
       <h1>${ans ? "Thanks for letting us know" : "Did you make this purchase?"}</h1>

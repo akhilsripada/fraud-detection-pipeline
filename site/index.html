@@ -3,223 +3,414 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sentinel · Live demo</title>
+<title>Sentinel: real-time fraud detection</title>
+<meta name="description" content="Sentinel scores every card swipe as it streams in, declines fraud in under a millisecond, and explains each decision in plain English. Built by Akhil Sripada.">
+<meta property="og:title" content="Sentinel: real-time fraud detection">
+<meta property="og:description" content="Live demo: every card swipe scored in under a millisecond, with plain-English explanations and a cardholder 'was this you?' alert.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <style>
-  /* Layout: a lab bench. Name strip, three project tabs, then per project: command bar, AI reply, live stage + side instruments. */
+  /* Sentinel product page.
+     One idea: fraud gets stopped before the receipt prints. The hero is a live receipt tape; the console below
+     is the tool a fraud analyst would use (queue, map, case file). Red, amber and green only ever mean
+     declined, on hold and approved. */
   :root {
-    --bg: #eef1f4; --panel: #ffffff; --ink: #141920; --muted: #586270; --line: #dbe0e6; --soft: #f3f5f7;
-    --sentinel: #c93a31; --pick: #b86e00; --home: #0a7f75;
-    --ok: #1b7444; --warn: #a86400; --bad: #c22f2c;
-    --land: #dfe4ea; --land-edge: #b9c2cd; --globe: #f7f9fb; --grid: #e7ebef;
-    --floor: #f6f7f9; --rack: #d7dde4; --wall: #8a95a2; --glow: #ffb648; --cam: #11161c; --cam-ink: #e9eef3; --cam-line: #2b3540;
-    --display: "Familjen Grotesk", "Arial Narrow", system-ui, sans-serif;
-    --body: "Instrument Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
-    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-    --accent: var(--sentinel);
+    --bg: #f3f5f8; --panel: #ffffff; --ink: #0f1b2d; --muted: #5a687b; --line: #d8dee6; --soft: #eef1f5;
+    --navy: #16294a; --navy-ink: #ffffff;
+    --ok: #1e7b4f; --warn: #b07006; --bad: #cf2e2e;
+    --paper: #fffdf8; --paper-ink: #2a2f36; --paper-dim: #8a8f96;
+    --land: #e3e8ee; --land-edge: #b9c3cf; --globe: #f8fafc; --grid: #e8ecf1;
+    --sentinel: var(--bad);
+    --display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --body: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "Spline Sans Mono", ui-monospace, Menlo, Consolas, monospace;
+    --accent: var(--navy);
+    --shadow: 0 1px 0 rgba(15,27,45,.04), 0 12px 32px -18px rgba(15,27,45,.28);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #0c1014; --panel: #151a20; --ink: #e6eaee; --muted: #8b95a1; --line: #252c35; --soft: #1b2129;
-      --sentinel: #ff6e64; --pick: #f2a43a; --home: #39c4b5;
-      --ok: #5fcf8f; --warn: #f2b553; --bad: #ff7570;
-      --land: #222a33; --land-edge: #3a4553; --globe: #10151a; --grid: #1d242c;
-      --floor: #12171c; --rack: #2a333d; --wall: #6d7886; --glow: #ffb648; --cam: #0b0f13; --cam-ink: #e9eef3; --cam-line: #26303a;
+      --bg: #0c1320; --panel: #121b2b; --ink: #e8edf4; --muted: #93a0b3; --line: #24304a; --soft: #182338;
+      --navy: #dfe7f6; --navy-ink: #0c1320;
+      --ok: #4fc38a; --warn: #f0b34a; --bad: #ff6a63;
+      --paper: #f4f1e8; --paper-ink: #22262c; --paper-dim: #7d828a;
+      --land: #1c2840; --land-edge: #34435f; --globe: #0f1726; --grid: #18233a;
+      --shadow: 0 12px 32px -18px rgba(0,0,0,.7);
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #0c1014; --panel: #151a20; --ink: #e6eaee; --muted: #8b95a1; --line: #252c35; --soft: #1b2129;
-    --sentinel: #ff6e64; --pick: #f2a43a; --home: #39c4b5;
-    --ok: #5fcf8f; --warn: #f2b553; --bad: #ff7570;
-    --land: #222a33; --land-edge: #3a4553; --globe: #10151a; --grid: #1d242c;
-    --floor: #12171c; --rack: #2a333d; --wall: #6d7886; --glow: #ffb648; --cam: #0b0f13; --cam-ink: #e9eef3; --cam-line: #26303a;
+    --bg: #0c1320; --panel: #121b2b; --ink: #e8edf4; --muted: #93a0b3; --line: #24304a; --soft: #182338;
+    --navy: #dfe7f6; --navy-ink: #0c1320;
+    --ok: #4fc38a; --warn: #f0b34a; --bad: #ff6a63;
+    --paper: #f4f1e8; --paper-ink: #22262c; --paper-dim: #7d828a;
+    --land: #1c2840; --land-edge: #34435f; --globe: #0f1726; --grid: #18233a;
+    --shadow: 0 12px 32px -18px rgba(0,0,0,.7);
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
-  .wrap { max-width: 1260px; margin: 0 auto; padding-block: 22px 48px;
-          padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-          display: grid; gap: 16px; }
-  .owner { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
-  h1 { font: 700 30px/1.05 var(--display); letter-spacing: -0.02em; margin: 0; }
-  .owner p { margin: 0; color: var(--muted); max-width: 62ch; }
-  .mono { font-family: var(--mono); font-size: 12px; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
   .muted { color: var(--muted); }
+  code { font-family: var(--mono); font-size: .86em; background: var(--soft); padding: 2px 6px; border-radius: 5px; }
+  :focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; border-radius: 6px; }
 
-  .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-  .tab { text-align: left; font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line);
-         border-radius: 10px; padding: 12px 14px; cursor: pointer; display: grid; gap: 2px; position: relative; }
-  .tab .t-name { font: 600 18px/1.2 var(--display); display: flex; align-items: center; gap: 8px; }
-  .tab .t-line { color: var(--muted); font-size: 13px; }
-  .tab i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); display: inline-block; }
-  .tab[aria-selected="true"] { border-color: var(--c); box-shadow: inset 0 -3px 0 var(--c); }
-  .tab:hover { border-color: var(--c); }
-  .tab:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* ---------------------------------------------------------------- nav */
+  .nav { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px);
+         border-bottom: 1px solid var(--line); }
+  .nav .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 9px; font: 800 19px/1 var(--display); letter-spacing: -.02em; text-decoration: none; }
+  .brand svg { width: 22px; height: 22px; }
+  .nav nav { display: flex; gap: 22px; font-size: 14.5px; }
+  .nav nav a { text-decoration: none; color: var(--muted); }
+  .nav nav a:hover { color: var(--ink); }
+  .nav .by { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 14px; text-decoration: none; }
+  .nav .by img { width: 28px; height: 28px; border-radius: 50%; background: var(--soft); }
+  .nav .by span b { font-weight: 600; }
 
-  .proj { display: grid; gap: 12px; }
-  .proj[data-p="sentinel"] { --accent: var(--sentinel); }
-  :root { --accent: var(--sentinel); }
-  .proj[data-p="pickpath"] { --accent: var(--pick); }
-  .proj[data-p="homemind"] { --accent: var(--home); }
-  .proj-head { display: flex; gap: 8px 16px; align-items: baseline; flex-wrap: wrap; }
-  .proj-head h2 { font: 700 24px/1.1 var(--display); margin: 0; letter-spacing: -0.01em; }
-  .proj-head p { margin: 0; color: var(--muted); max-width: 70ch; }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip { font: 500 12px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 2px 9px; background: var(--panel); }
+  /* ---------------------------------------------------------------- hero */
+  .hero { padding: 64px 0 40px; }
+  .hero .wrap { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 56px; align-items: center; }
+  .hero h1 { font: 800 clamp(40px, 5.6vw, 72px)/0.98 var(--display); letter-spacing: -.035em; margin: 0 0 22px; max-width: 12ch; text-wrap: balance; }
+  .hero .lede { font-size: 19px; line-height: 1.5; color: var(--muted); max-width: 46ch; margin: 0 0 28px; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 34px; }
+  .btn { font: 600 15px/1 var(--body); border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+         padding: 13px 18px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+  .btn:hover { border-color: var(--ink); }
+  .btn.primary { background: var(--navy); border-color: var(--navy); color: var(--navy-ink); }
+  .btn.primary:hover { filter: brightness(1.12); }
+  .btn svg { width: 17px; height: 17px; fill: currentColor; }
+  .proof { display: grid; grid-template-columns: repeat(3, auto); gap: 8px 36px; justify-content: start; margin: 0; }
+  .proof div { display: grid; gap: 2px; }
+  .proof dt { font-size: 13.5px; color: var(--muted); order: 2; }
+  .proof dd { margin: 0; font: 700 26px/1.1 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; order: 1; }
 
-  .cmd { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
-  .cmd form { display: flex; gap: 8px; align-items: stretch; }
-  .cmd input { flex: 1; min-width: 0; font: 500 16px var(--body); color: var(--ink); background: var(--soft);
-               border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  /* the receipt tape: the one loud thing on the page */
+  .tape-wrap { position: relative; justify-self: end; width: min(100%, 410px); }
+  .tape { background: var(--paper); color: var(--paper-ink); font: 500 12.5px/1.25 var(--mono); padding: 20px 20px 26px;
+          box-shadow: var(--shadow); transform: rotate(1.2deg); position: relative; margin-bottom: 8px; }
+  .tape::after { content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 8px;
+                 background: linear-gradient(135deg, var(--paper) 50%, transparent 50%) 0 0 / 12px 8px repeat-x,
+                             linear-gradient(225deg, var(--paper) 50%, transparent 50%) 0 0 / 12px 8px repeat-x; }
+  .tape .head { text-align: center; border-bottom: 1px dashed var(--paper-dim); padding-bottom: 10px; margin-bottom: 8px; }
+  .tape .head b { display: block; font-weight: 600; letter-spacing: .08em; }
+  .tape .head span { color: var(--paper-dim); }
+  .tape ol { list-style: none; margin: 0; padding: 0; height: 342px; overflow: hidden; display: flex; flex-direction: column;
+             -webkit-mask-image: linear-gradient(#000 85%, transparent); mask-image: linear-gradient(#000 85%, transparent); }
+  .tape li { display: grid; grid-template-columns: 58px minmax(0, 1fr) 72px; gap: 8px; padding: 4px 0; position: relative; }
+  .tape li .where { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .tape li .amt { text-align: right; }
+  .tape li .t { color: var(--paper-dim); }
+  .tape li.in { animation: feed .5s ease-out; }
+  @keyframes feed { from { opacity: 0; transform: translateY(-10px); } }
+  .tape li.no { color: var(--bad); font-weight: 600; }
+  .tape li.no .why { grid-column: 2 / 4; font-weight: 500; font-size: 11.5px; margin-top: -2px; padding-right: 86px; }
+  .tape li.hold { color: var(--warn); }
+  .stamp { position: absolute; right: -4px; bottom: 0; border: 2px solid var(--bad); color: var(--bad); font: 700 11px/1 var(--display);
+           letter-spacing: .12em; padding: 4px 6px 3px; border-radius: 4px; transform: rotate(-9deg); background: color-mix(in srgb, var(--paper) 70%, transparent); }
+  .tape .foot { border-top: 1px dashed var(--paper-dim); margin-top: 8px; padding-top: 10px; display: flex; justify-content: space-between; color: var(--paper-dim); }
+  .tape .foot b { color: var(--paper-ink); font-weight: 600; }
+
+  /* ---------------------------------------------------------------- console */
+  section { scroll-margin-top: 72px; }
+  .sec-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 18px; }
+  .sec-head h2 { font: 700 clamp(26px, 3vw, 34px)/1.1 var(--display); letter-spacing: -.025em; margin: 0; }
+  .sec-head p { margin: 0; color: var(--muted); max-width: 58ch; }
+  .console-sec { padding: 28px 0 64px; }
+  .console { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+  .cmd { padding: 16px; border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
+  .cmd form { display: flex; gap: 8px; }
+  .cmd .field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; background: var(--soft); border: 1px solid transparent;
+                border-radius: 11px; padding: 0 14px; }
+  .cmd .field:focus-within { border-color: var(--navy); background: var(--panel); }
+  .cmd .field svg { width: 18px; height: 18px; fill: var(--muted); flex: none; }
+  .cmd input { flex: 1; min-width: 0; font: 500 16px var(--body); color: var(--ink); background: none; border: 0; outline: 0; padding: 13px 0; }
   .cmd input::placeholder { color: var(--muted); }
-  .btn { font: 600 14px var(--body); border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-         padding: 8px 12px; cursor: pointer; }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
-  .btn.primary:hover { color: var(--panel); filter: brightness(1.06); }
-  .btn.icon { width: 44px; padding: 0; display: grid; place-items: center; }
-  .btn.icon svg { width: 18px; height: 18px; fill: currentColor; }
-  .examples { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .examples .lbl { font-size: 12px; color: var(--muted); margin-right: 2px; }
-  .ex { font: 500 13px var(--body); color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 99px;
-        padding: 4px 11px; cursor: pointer; }
-  .ex:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.icon { width: 48px; padding: 0; justify-content: center; }
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ex { font: 500 13.5px var(--body); color: var(--ink); background: none; border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; cursor: pointer; }
+  .ex:hover { border-color: var(--ink); }
 
-  .reply { border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 10px 10px 0; padding: 12px 14px;
-           display: grid; gap: 8px; border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  .reply.pop { animation: pop .45s cubic-bezier(.2,.9,.3,1.2); }
-  @keyframes pop { from { transform: translateY(6px) scale(.985); opacity: .35; } }
-  .reply .you { font-size: 13px; color: var(--muted); }
-  .reply .you b { color: var(--ink); font-weight: 600; }
-  .reply .ans { max-width: 80ch; }
-  .reply .ans p { margin: 0 0 6px; }
-  .reply .ans ul { margin: 4px 0 6px; padding-left: 18px; display: grid; gap: 3px; }
-  .reply .meta { font: 12px var(--mono); color: var(--muted); }
-  .reply .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .quote { background: var(--soft); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+  .bench { display: grid; grid-template-columns: 300px minmax(0, 1fr) 360px; min-height: 560px; }
+  .bench > * { min-width: 0; }
+  .col { display: flex; flex-direction: column; }
+  .col + .col { border-left: 1px solid var(--line); }
+  .col-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 14px 16px 10px; }
+  .col-head h3 { font: 600 15px/1.2 var(--display); margin: 0; }
+  .col-head span { font-size: 13px; color: var(--muted); }
 
-  .stage { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 12px; align-items: start; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; display: grid; gap: 8px; }
-  .panel h3 { font: 600 15px/1.2 var(--display); margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-  .panel h3 .hint { font: 400 12px var(--body); color: var(--muted); }
-  canvas { display: block; width: 100%; }
-  .c-main { height: 400px; }
-  .c-ar { height: 240px; border-radius: 8px; }
-  .c-chart { height: 130px; }
-  .side { display: grid; gap: 12px; min-width: 0; }
+  .counts { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 16px 12px; gap: 8px; border-bottom: 1px solid var(--line); }
+  .counts div { display: grid; }
+  .counts b { font: 700 20px/1.2 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .counts span { font-size: 12.5px; color: var(--muted); }
+  .counts .c-bad b { color: var(--bad); }
+  .list { list-style: none; margin: 0; padding: 6px; overflow: auto; flex: 1; max-height: 470px; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .row:hover, .row:focus-visible { background: var(--soft); }
+  .row.sel { background: var(--soft); box-shadow: inset 3px 0 0 var(--navy); }
+  .row .amt { font-weight: 600; }
+  .row .tm { font-size: 13px; color: var(--muted); text-align: right; }
+  .row .sub { grid-column: 1 / -1; font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .row.new { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--bad) 12%, transparent); } }
+  .badge { font: 600 11.5px/1 var(--body); padding: 4px 7px; border-radius: 5px; flex: none; }
+  .b-block { color: var(--bad); background: color-mix(in srgb, var(--bad) 13%, transparent); }
+  .b-review { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+  .b-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+  .empty { padding: 18px 12px; color: var(--muted); font-size: 14px; }
 
-  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .kpi { background: var(--soft); border-radius: 8px; padding: 8px 10px; }
-  .kpi .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .kpi .v { font: 700 22px/1.15 var(--display); font-variant-numeric: tabular-nums; }
+  .map-col { position: relative; background: radial-gradient(circle at 50% 46%, var(--globe) 0 38%, var(--panel) 72%); }
+  .map-col canvas { display: block; width: 100%; flex: 1; min-height: 440px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); padding: 0 16px 14px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+  .map-col .ar-link { position: absolute; right: 14px; top: 12px; font-size: 13px; color: var(--muted); }
 
-  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 300px; overflow: auto; }
-  .row { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center;
-         padding: 7px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
-  .row.click { cursor: pointer; }
-  .row.click:hover { background: var(--soft); }
-  .row .sub { grid-column: 2 / -1; color: var(--muted); font-size: 12.5px; }
-  .row.new { animation: flash 1.4s ease-out; }
-  @keyframes flash { from { background: color-mix(in srgb, var(--accent) 16%, transparent); } }
-  .badge { font: 600 11px var(--body); letter-spacing: .03em; padding: 2px 7px; border-radius: 4px; justify-self: start; }
-  .b-block { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
-  .b-review { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
-  .b-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
-  .b-idle { color: var(--muted); background: var(--soft); }
-  .right { text-align: right; }
-  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
-  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
-  .note { font-size: 12.5px; color: var(--muted); margin: 0; max-width: 90ch; }
+  .case { padding: 4px 18px 18px; }
+  .reply { display: grid; gap: 10px; }
+  .reply.pop { animation: pop .35s ease-out; }
+  @keyframes pop { from { opacity: .3; transform: translateY(4px); } }
+  .reply .you { font-size: 13.5px; color: var(--muted); background: var(--soft); border-radius: 10px; padding: 8px 11px; justify-self: start; max-width: 100%; }
+  .reply .ans p { margin: 0 0 8px; }
+  .reply .ans ul { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }
+  .reply .meta { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+  .cf-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .cf-amt { font: 800 38px/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin: 8px 0 4px; }
+  .cf-where { font-weight: 600; }
+  .cf-sub { color: var(--muted); font-size: 14px; }
+  .cf-h { font: 600 13.5px var(--display); margin: 14px 0 6px; color: var(--muted); }
+  .cf-why { list-style: none; padding: 0 !important; margin: 0; display: grid; gap: 8px !important; }
+  .cf-why li { padding-left: 14px; position: relative; font-size: 15px; }
+  .cf-why li::before { content: ""; position: absolute; left: 0; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--bad); }
+  .sms { background: var(--soft); border-radius: 14px 14px 14px 4px; padding: 10px 12px; font-size: 14.5px; }
+  .cf-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-decoration: none; border: 1px solid var(--line);
+             border-radius: 12px; padding: 12px 14px; margin-top: 12px; }
+  .cf-link:hover { border-color: var(--ink); }
+  .cf-link b { display: block; font-weight: 600; }
+  .cf-link span { font-size: 13.5px; color: var(--muted); }
+  .cf-link svg { width: 20px; height: 20px; flex: none; fill: var(--ink); }
+  .truth { font-size: 13px; color: var(--muted); margin-top: 10px !important; }
 
-  .dev { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px; border-radius: 6px; }
-  .dev .n { font-weight: 500; }
-  .dev .s { color: var(--muted); font-size: 12.5px; }
-  .dev .w { font: 12px var(--mono); color: var(--muted); text-align: right; min-width: 58px; }
-  .toggle { width: 42px; height: 24px; border-radius: 99px; border: 1px solid var(--line); background: var(--soft); position: relative; cursor: pointer; padding: 0; }
-  .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .18s, background .18s; }
-  .toggle[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); }
-  .toggle[aria-pressed="true"]::after { transform: translateX(18px); background: var(--accent); }
-  .toggle:disabled { opacity: .45; cursor: default; }
-  .full { font-size: 13px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; margin: 0; }
-  .full b { color: var(--ink); font-weight: 600; }
+  /* ---------------------------------------------------------------- how it works */
+  .how { padding: 64px 0; border-top: 1px solid var(--line); }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; counter-reset: s; }
+  .steps li { counter-increment: s; padding: 0 22px 0 0; position: relative; }
+  .steps li::before { content: counter(s); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+                      border: 1.5px solid var(--ink); font: 700 14px var(--display); margin-bottom: 14px; background: var(--bg); position: relative; z-index: 1; }
+  .steps li::after { content: ""; position: absolute; top: 15px; left: 30px; right: 0; height: 1.5px; background: var(--line); }
+  .steps li:last-child::after { display: none; }
+  .steps h3 { font: 600 17px/1.25 var(--display); margin: 0 0 6px; }
+  .steps p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .steps .ms { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 
-  @media (max-width: 960px) {
-    .stage { grid-template-columns: minmax(0, 1fr); }
-    .c-main { height: 330px; }
+  /* ---------------------------------------------------------------- results + stack */
+  .results { padding: 64px 0; border-top: 1px solid var(--line); }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 56px; align-items: start; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 13px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 500; color: var(--muted); width: 38%; padding-right: 18px; }
+  td b { font: 700 19px var(--display); letter-spacing: -.01em; display: block; }
+  td span { font-size: 14px; color: var(--muted); }
+  .stack h3 { font: 600 17px var(--display); margin: 0 0 6px; }
+  .stack p { margin: 0 0 20px; color: var(--muted); font-size: 15px; }
+  .stack p:last-child { margin: 0; }
+  .run { margin-top: 24px; background: var(--navy); color: var(--navy-ink); border-radius: 14px; padding: 18px 20px; }
+  .run p { margin: 0 0 10px; font-size: 15px; color: inherit; opacity: .8; }
+  .run pre { margin: 0; font: 500 13.5px/1.7 var(--mono); white-space: pre-wrap; }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; font-size: 14px; color: var(--muted); }
+  footer .wrap { display: flex; gap: 12px 28px; flex-wrap: wrap; justify-content: space-between; }
+  footer a { color: var(--ink); }
+
+  /* ---------------------------------------------------------------- responsive */
+  @media (max-width: 1100px) {
+    .bench { grid-template-columns: 280px minmax(0, 1fr); }
+    .case-col { grid-column: 1 / -1; border-left: 0 !important; border-top: 1px solid var(--line); }
+    .case { max-height: none; }
   }
-  @media (max-width: 640px) {
-    .tabs { grid-template-columns: minmax(0, 1fr); }
-    .tab .t-line { display: none; }
+  @media (max-width: 900px) {
+    .hero .wrap, .grid2 { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+    .tape-wrap { justify-self: center; }
+    .steps { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    .steps li { padding: 0 0 0 46px; }
+    .steps li::before { position: absolute; left: 0; top: -2px; margin: 0; }
+    .steps li::after { left: 14px; top: 30px; bottom: -22px; right: auto; width: 1.5px; height: auto; }
+    .nav nav { display: none; }
+  }
+  @media (max-width: 720px) {
+    .bench { grid-template-columns: minmax(0, 1fr); }
+    .col + .col { border-left: 0; border-top: 1px solid var(--line); }
+    .map-col { order: -1; }
+    .case-col { order: -2; border-top: 0 !important; }
+    .map-col canvas { min-height: 320px; }
+    .list { max-height: 360px; }
+    .hero { padding-top: 40px; }
+    .hero .lede { font-size: 17px; }
+    .proof { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 16px; }
+    .proof dd { font-size: 21px; }
+    .tape ol { height: 222px; }
     .cmd form { flex-wrap: wrap; }
-    .cmd input { flex-basis: 100%; }
-    .c-main { height: 290px; }
-    h1 { font-size: 26px; }
+    .cmd .field { flex-basis: 100%; }
+    .cmd form .btn.primary { flex: 1; justify-content: center; }
+    .examples { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
+    .ex { white-space: nowrap; }
+    .nav .by span { display: none; }
   }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-  a { color: var(--accent); }
-  code { font-family: var(--mono); font-size: 13px; background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="owner">
-    <h1>Sentinel</h1>
-    <span class="mono muted">by Akhil Sripada</span>
-    <p>Real-time fraud detection you can talk to. This live demo runs entirely in your browser. <a href="https://github.com/akhilsripada/fraud-detection-pipeline">Source code</a> · <a href="ar/">AR globe</a></p>
-  </header>
-  <!-- ===================================================================== SENTINEL -->
-  <section class="proj" id="sentinel" data-p="sentinel">
-    <div class="proj-head">
-      <p>Scores every card swipe as it happens, blocks fraud, and explains each decision in plain English.</p>
-    </div>
-    <div class="chips"><span class="chip">event streaming</span><span class="chip">fraud model + rules</span><span class="chip">LLM explanations</span><span class="chip">WebXR globe</span><span class="chip">MCP server</span></div>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Sentinel home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor"/><path d="m8.5 12 2.4 2.4L15.8 9.5" fill="none" stroke="var(--bg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Sentinel
+    </a>
+    <nav aria-label="Sections">
+      <a href="#console">Live console</a>
+      <a href="#how">How it works</a>
+      <a href="#results">Results</a>
+      <a href="https://github.com/akhilsripada/fraud-detection-pipeline">Source</a>
+    </nav>
+    <a class="by" href="https://github.com/akhilsripada" title="Akhil Sripada on GitHub">
+      <img src="https://github.com/akhilsripada.png?size=64" alt="" width="28" height="28" loading="lazy" onerror="this.remove()">
+      <span>Built by <b>Akhil Sripada</b></span>
+    </a>
+  </div>
+</header>
 
-    <div class="cmd">
-      <form id="sentinel-form" autocomplete="off">
-        <input id="sentinel-input" type="text" placeholder="Ask Sentinel, e.g. “Why was the last transaction blocked?”" aria-label="Command for Sentinel">
-        <button class="btn icon" type="button" id="sentinel-mic" aria-label="Speak a command"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
-        <button class="btn primary" type="submit">Run</button>
-      </form>
-      <div class="examples"><span class="lbl">Try</span>
-        <button class="ex" data-cmd="sentinel">Why was the last transaction blocked?</button>
-        <button class="ex" data-cmd="sentinel">Simulate an account takeover</button>
-        <button class="ex" data-cmd="sentinel">Run a card testing attack</button>
-        <button class="ex" data-cmd="sentinel">Show me fraud in Europe</button>
-        <button class="ex" data-cmd="sentinel">Give me a summary</button>
-      </div>
-    </div>
-    <div class="reply" id="sentinel-reply" role="status" aria-live="polite"></div>
-
-    <div class="stage">
-      <div class="panel">
-        <h3>Live attack globe <span class="hint">On a phone this globe sits on your desk through the camera (WebXR). Arcs join a card's last location to the suspicious one.</span></h3>
-        <canvas id="sentinel-globe" class="c-main" aria-label="Rotating globe with live fraud alerts"></canvas>
-        <div class="legend"><span><i style="background:var(--bad)"></i>Blocked</span><span><i style="background:var(--warn)"></i>Sent for review</span><span><i style="background:var(--land-edge)"></i>Cities in the simulation</span></div>
-      </div>
-      <div class="side">
-        <div class="panel">
-          <h3>Stream <span class="hint" id="sentinel-filter">all regions</span></h3>
-          <div class="kpis">
-            <div class="kpi"><div class="l">Scored</div><div class="v" id="s-scored">0</div></div>
-            <div class="kpi"><div class="l">Flagged</div><div class="v" id="s-flagged">0</div></div>
-            <div class="kpi"><div class="l">Blocked</div><div class="v" id="s-blocked">0</div></div>
-          </div>
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <h1>Stop fraud before the receipt prints.</h1>
+        <p class="lede">Sentinel scores every card swipe as it streams in, declines the bad ones in under a millisecond, explains each decision in plain English, and shows the cardholder exactly where and when it happened.</p>
+        <div class="cta">
+          <button class="btn primary" type="button" id="hero-attack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Run an attack</button>
+          <a class="btn" href="https://github.com/akhilsripada/fraud-detection-pipeline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>View the code</a>
         </div>
-        <div class="panel">
-          <h3>Alerts <span class="hint">tap one to ask why</span></h3>
-          <ul class="list" id="sentinel-feed"></ul>
+        <dl class="proof">
+          <div><dt>of declines were real fraud</dt><dd>94%</dd></div>
+          <div><dt>p99 to score a swipe</dt><dd>0.27 ms</dd></div>
+          <div><dt>swipes per second, one core</dt><dd>6,600</dd></div>
+        </dl>
+      </div>
+      <div class="tape-wrap" aria-label="Live transaction tape">
+        <div class="tape">
+          <div class="head"><b>SENTINEL</b><span>live card authorizations</span></div>
+          <ol id="tape" aria-live="off"></ol>
+          <div class="foot"><span>scored <b id="tape-scored">0</b></span><span>declined <b id="tape-declined">0</b></span></div>
         </div>
       </div>
     </div>
-    <p class="full"><b>Full build adds:</b> the trained model from my fraud pipeline (94% precision, 87.5% recall on held-out data), a real event stream, PostgreSQL, cached LLM explanations, and an MCP server so Claude or ChatGPT can answer “why was this blocked?” directly.</p>
   </section>
 
-  <p class="note">Browser demo with simulated cardholders. The full system in the repo runs the trained model, a live event stream, a database, an AI assistant and an MCP server. Start it with <code>python run.py</code>.</p>
-</div>
+  <section class="console-sec" id="console">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>The analyst console</h2>
+        <p>Simulated cardholders, running live in your browser. Ask in plain English, launch an attack, or pick any alert to open its case.</p>
+      </div>
+      <div class="console">
+        <div class="cmd">
+          <form id="sentinel-form" autocomplete="off">
+            <label class="field">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/></svg>
+              <input id="sentinel-input" type="text" placeholder="Ask anything, e.g. “tell me the latest blocked transaction”" aria-label="Ask Sentinel">
+            </label>
+            <button class="btn icon" type="button" id="sentinel-mic" aria-label="Speak a command"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
+            <button class="btn primary" type="submit">Ask</button>
+          </form>
+          <div class="examples">
+            <button class="ex" data-cmd="sentinel">Why was the last transaction blocked?</button>
+            <button class="ex" data-cmd="sentinel">Simulate impossible travel</button>
+            <button class="ex" data-cmd="sentinel">Simulate an account takeover</button>
+            <button class="ex" data-cmd="sentinel">Show me fraud in Europe</button>
+            <button class="ex" data-cmd="sentinel">Give me a summary</button>
+          </div>
+        </div>
+        <div class="bench">
+          <div class="col">
+            <div class="col-head"><h3>Alert queue</h3><span id="sentinel-filter">all regions</span></div>
+            <div class="counts">
+              <div><b id="s-scored">0</b><span>scored</span></div>
+              <div><b id="s-flagged">0</b><span>flagged</span></div>
+              <div class="c-bad"><b id="s-blocked">0</b><span>declined</span></div>
+            </div>
+            <ul class="list" id="sentinel-feed"></ul>
+          </div>
+          <div class="col map-col">
+            <div class="col-head"><h3>Where it's happening</h3></div>
+            <a class="ar-link" href="ar/">Open in AR</a>
+            <canvas id="sentinel-globe" aria-label="Globe with live fraud alerts. Arcs join a card's last location to the suspicious one."></canvas>
+            <div class="legend"><span><i style="background:var(--bad)"></i>Declined</span><span><i style="background:var(--warn)"></i>On hold</span><span><i style="background:var(--land-edge)"></i>Cities</span></div>
+          </div>
+          <div class="col case-col">
+            <div class="col-head"><h3>Case</h3><span>explained from the decision's own features</span></div>
+            <div class="case"><div class="reply" id="sentinel-reply" role="status" aria-live="polite"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="how">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>How a swipe gets decided</h2>
+        <p>The same code runs on a laptop with one command, or serverless on AWS with Kinesis, Lambda and DynamoDB.</p>
+      </div>
+      <ol class="steps">
+        <li><h3>Swipe arrives</h3><p>Each authorization lands on a stream, partitioned by card so one cardholder's events stay in order.</p><span class="ms">Kinesis or in-memory</span></li>
+        <li><h3>Profile lookup</h3><p>The card's history: usual spend, last location, known devices and countries, recent charges.</p><span class="ms">DynamoDB, optimistic locking</span></li>
+        <li><h3>Features</h3><p>Fifteen signals, like distance from the last swipe, travel speed, charges in the last minute, and spend versus normal.</p><span class="ms">streaming, O(1) per event</span></li>
+        <li><h3>Model and rules</h3><p>Gradient-boosted trees score the risk. Rules add plain-English reasons and hard overrides, such as impossible travel.</p><span class="ms">0.27 ms at p99</span></li>
+        <li><h3>Decision and alert</h3><p>Approve, hold or decline. A decline texts the cardholder “was this you?”, and their answer freezes the card or clears it.</p><span class="ms">exactly-once alerts</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="results" id="results">
+    <div class="wrap grid2">
+      <div>
+        <div class="sec-head"><h2>Measured, not promised</h2></div>
+        <table>
+          <tr><th>Precision</th><td><b>94.0%</b><span>of flagged transactions were fraud, on held-out data</span></td></tr>
+          <tr><th>Recall</th><td><b>87.5%</b><span>of fraud was caught</span></td></tr>
+          <tr><th>False alarms</th><td><b>0.06%</b><span>of genuine purchases flagged</span></td></tr>
+          <tr><th>Model quality</th><td><b>PR-AUC 0.938</b><span>versus 0.802 for a logistic-regression baseline</span></td></tr>
+          <tr><th>Throughput</th><td><b>6,600+ per second</b><span>on a single CPU core, p99 0.27 ms per transaction</span></td></tr>
+          <tr><th>Reliability</th><td><b>Exactly-once alerts</b><span>on an at-least-once stream, with ordered retries and a dead-letter queue with replay</span></td></tr>
+        </table>
+      </div>
+      <div class="stack">
+        <div class="sec-head"><h2>What's inside</h2></div>
+        <h3>Streaming pipeline</h3>
+        <p>Python with no third-party dependencies. Per-card state, idempotent processing, and a config-driven rules engine.</p>
+        <h3>AWS, as code</h3>
+        <p>CDK stack with Kinesis, Lambda, DynamoDB, API Gateway WebSockets, SNS, Firehose and S3, plus CloudWatch metrics.</p>
+        <h3>AI you can talk to</h3>
+        <p>Plain-English questions are answered from the decision's real features. An MCP server lets Claude, ChatGPT or Cursor query the live stream.</p>
+        <h3>Cardholder experience</h3>
+        <p>A “was this you?” alert with the store, exact coordinates and local time, and an AR view that points the phone at where it happened.</p>
+        <div class="run">
+          <p>Run the full system locally in one command:</p>
+          <pre>git clone https://github.com/akhilsripada/fraud-detection-pipeline
+cd fraud-detection-pipeline && python run.py</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Designed and built by <a href="https://github.com/akhilsripada">Akhil Sripada</a>. The demo uses simulated cardholders; no real card data.</span>
+    <span><a href="https://github.com/akhilsripada/fraud-detection-pipeline">Source on GitHub</a>, MIT licence</span>
+  </div>
+</footer>
 <script>
 const LAND = [[[-165,65],[-160,71],[-140,70],[-125,70],[-110,73],[-95,72],[-82,73],[-70,67],[-62,60],[-56,52],[-64,47],[-70,43],[-74,40],[-76,35],[-81,31],[-80,25],[-82,28],[-85,30],[-90,29],[-94,29],[-97,26],[-97,21],[-95,19],[-91,19],[-87,21],[-88,16],[-84,15],[-83,10],[-79,9],[-77,8],[-80,7],[-83,8],[-86,12],[-92,15],[-96,16],[-105,20],[-106,23],[-110,23],[-112,29],[-115,32],[-117,32],[-120,34],[-123,38],[-124,42],[-124,48],[-128,51],[-134,57],[-140,60],[-150,61],[-155,58],[-162,58],[-165,62]],[[-55,60],[-45,60],[-40,65],[-22,70],[-20,77],[-30,83],[-55,82],[-70,78],[-60,76],[-55,70]],[[-77,8],[-72,12],[-63,11],[-55,6],[-50,2],[-48,-1],[-40,-3],[-35,-6],[-35,-9],[-39,-14],[-40,-22],[-48,-26],[-53,-33],[-58,-38],[-62,-40],[-65,-45],[-68,-50],[-69,-55],[-74,-53],[-75,-45],[-73,-37],[-71,-30],[-70,-18],[-76,-14],[-81,-6],[-80,-1],[-78,2],[-78,7]],[[-9,43],[-9,39],[-6,36],[-2,37],[0,39],[3,43],[8,44],[12,42],[16,38],[18,40],[13,45],[19,42],[22,37],[26,40],[29,41],[36,36],[35,33],[34,28],[39,20],[43,13],[45,13],[52,16],[57,19],[59,22],[56,26],[51,24],[48,29],[52,27],[57,25],[62,25],[67,24],[70,21],[73,17],[77,8],[80,13],[80,16],[87,21],[92,22],[94,17],[98,16],[98,8],[101,3],[104,1],[100,7],[101,13],[105,9],[109,12],[108,17],[106,20],[110,21],[117,23],[121,29],[122,31],[119,35],[122,37],[118,39],[122,40],[125,40],[127,35],[129,35],[130,42],[135,44],[141,48],[140,54],[136,55],[143,59],[155,59],[163,62],[178,65],[180,69],[160,70],[140,72],[120,73],[105,78],[95,76],[80,73],[70,73],[60,70],[45,68],[40,66],[33,70],[25,71],[15,68],[5,62],[5,58],[10,59],[11,55],[8,57],[8,54],[5,53],[2,51],[-2,48],[-5,48],[-1,45],[-2,43]],[[-5,50],[1,51],[2,53],[0,54],[-2,56],[-3,58],[-5,58],[-6,56],[-3,54],[-4,53],[-5,52]],[[-17,15],[-17,21],[-13,27],[-10,30],[-6,36],[0,36],[10,37],[11,33],[20,31],[25,32],[32,31],[34,28],[39,21],[43,12],[51,12],[51,10],[48,5],[41,-1],[39,-5],[40,-11],[40,-16],[35,-20],[35,-24],[33,-27],[31,-30],[27,-34],[20,-35],[18,-32],[15,-27],[12,-18],[13,-12],[12,-5],[9,-1],[9,4],[5,5],[-2,5],[-8,4],[-13,8],[-17,13]],[[44,-25],[47,-25],[50,-15],[49,-12],[44,-17]],[[130,31],[132,34],[135,34],[140,35],[141,38],[142,41],[140,41],[140,38],[136,37],[132,35]],[[95,5],[98,4],[106,-6],[104,-6],[100,-2]],[[109,1],[111,-3],[116,-4],[119,1],[117,7],[113,3]],[[105,-6],[114,-7],[114,-8],[106,-7]],[[131,-1],[141,-3],[150,-10],[143,-9],[138,-8]],[[114,-22],[114,-34],[118,-35],[124,-33],[131,-31],[136,-35],[138,-34],[140,-38],[146,-39],[150,-37],[153,-32],[153,-25],[146,-19],[145,-15],[142,-11],[141,-17],[136,-12],[131,-12],[126,-14],[122,-18]],[[172,-35],[178,-38],[175,-41],[171,-44],[167,-46],[170,-42]]];
 const CITIES = [["London",51.51,-0.13],["Tokyo",35.68,139.69],["Sydney",-33.87,151.21],["São Paulo",-23.55,-46.63],["Mumbai",19.08,72.88],["Lagos",6.52,3.38],["Singapore",1.35,103.82],["Moscow",55.76,37.62],["Seattle",47.61,-122.33],["New York",40.71,-74.01],["Tampa",27.95,-82.46],["Mexico City",19.43,-99.13],["San Francisco",37.77,-122.42],["Denver",39.74,-104.99],["Chicago",41.88,-87.63],["Austin",30.27,-97.74],["Atlanta",33.75,-84.39],["Toronto",43.65,-79.38],["Paris",48.86,2.35],["Berlin",52.52,13.4],["Bucharest",44.43,26.1],["Hyderabad",17.39,78.49]];
@@ -382,7 +573,7 @@ const clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: "nume
 function wireCommand(id, handler) {
   const form = $("#" + id + "-form"), input = $("#" + id + "-input"), reply = $("#" + id + "-reply"), mic = $("#" + id + "-mic");
   function show(text, out, ms) {
-    reply.innerHTML = (text ? `<div class="you"><b>You:</b> ${esc(text)}</div>` : "") +
+    reply.innerHTML = (text ? `<div class="you">${esc(text)}</div>` : "") +
       `<div class="ans">${out.html}</div>` +
       (ms != null ? `<div class="meta">Understood and applied in ${ms < 0.01 ? "under 0.01" : ms < 1 ? ms.toFixed(2) : ms.toFixed(1)} ms${out.meta ? " · " + out.meta : ""}</div>` : "");
     reply.classList.remove("pop"); void reply.offsetWidth; reply.classList.add("pop");
@@ -454,7 +645,8 @@ const Sentinel = (() => {
   const queue = [], alerts = [], arcs = [];
   const stats = { scored: 0, flagged: 0, blocked: 0 };
   let filter = null, rot = -70, tilt = 24, holdUntil = 0, targetRot = null, targetTilt = null;
-  let feedDirty = true, runner = null;
+  let feedDirty = true, runner = null, selectedId = null;
+  const cap = (x) => (x ? x[0].toUpperCase() + x.slice(1) : x);
 
   function txn(u, o = {}) {
     return { id: Math.floor(rand() * 1e12).toString(36), user: u, ts: o.ts ?? sim, city: o.city || u.home,
@@ -511,6 +703,7 @@ const Sentinel = (() => {
     stats.scored++;
     const u = t.user, before = (u.hist || []).slice(-5);
     u.hist = before.concat({ id: t.id, ts: t.ts, amount: t.amount, city: t.city, cat: t.cat, decision: s.decision });
+    if (live) toTape(t, s); else { warmTape.push([t, s]); if (warmTape.length > 400) warmTape.splice(0, 200); }
     if (s.decision === "ALLOW") return;
     stats.flagged++;
     if (s.decision === "BLOCK") stats.blocked++;
@@ -521,6 +714,26 @@ const Sentinel = (() => {
     arcs.push({ from: travel && s.prevCity ? s.prevCity : null, to: t.city, decision: s.decision, born: live ? performance.now() : performance.now() - 15000 });
     if (arcs.length > 30) arcs.shift();
     feedDirty = true;
+  }
+
+  // ------------------------------------------------------------------ receipt tape (hero)
+  const tapeEl = $("#tape"), warmTape = [];
+  const two = (n) => String(n).padStart(2, "0");
+  const hms = (ts) => { const d = new Date(ts * 1000); return `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`; };
+  let tapeLast = 0;
+  function toTape(t, s) {
+    // flagged swipes always print; approved ones at most every 0.7 s, so a decline stays readable for a while
+    const now = performance.now();
+    const seeding = t.ts < 0, ts = Math.abs(t.ts);
+    if (!seeding && s.decision === "ALLOW" && now - tapeLast < 700 && tapeEl.children.length >= 12) return;
+    if (s.decision === "ALLOW") tapeLast = now;
+    const li = document.createElement("li");
+    li.className = "in" + (s.decision === "BLOCK" ? " no" : s.decision === "REVIEW" ? " hold" : "");
+    li.innerHTML = `<span class="t">${hms(ts)}</span><span class="where">${esc(String(t.cat).toUpperCase())} ${esc(t.city.name.toUpperCase())}</span><span class="amt">${money(t.amount)}</span>` +
+      (s.decision === "BLOCK" ? `<span class="stamp">DECLINED</span><span class="why">${esc(s.reasons.map((r) => NICE[r.code]).join(", "))}</span>`
+        : s.decision === "REVIEW" ? `<span class="why">held for review: ${esc(s.reasons.map((r) => NICE[r.code]).join(", "))}</span>` : "");
+    tapeEl.prepend(li);
+    while (tapeEl.children.length > 18) tapeEl.lastElementChild.remove();
   }
 
   function attack(kind) {
@@ -550,7 +763,7 @@ const Sentinel = (() => {
     tickN++; sim += 2;
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i].at <= tickN) { process(queue[i].make(), live); queue.splice(i, 1); }
     const u = pick(users), r = rand();
-    if (r < 0.004) attack();
+    if (r < (live ? 0.012 : 0.004)) attack();   // live: an attack roughly every ten seconds, so the demo always has something to show
     else if (r < 0.03) process(txn(u, { amount: u.mean * (3 + rand() * 9), cat: pick(["electronics", "travel", "retail"]) }), live);
     else if (r < 0.034) { const d = devId(); process(txn(u, { device: d }), live); }
     else process(txn(u), live);
@@ -558,11 +771,19 @@ const Sentinel = (() => {
       $("#s-scored").textContent = int(stats.scored);
       $("#s-flagged").textContent = int(stats.flagged);
       $("#s-blocked").textContent = int(stats.blocked);
+      $("#tape-scored").textContent = int(stats.scored);
+      $("#tape-declined").textContent = int(stats.blocked);
     }
   }
 
   // warm up: three simulated hours of history before the page opens
   for (let i = 0; i < 5400; i++) tick(false);
+  // open the tape on the last few swipes; an attack lands a second after the page opens so fraud is visible on arrival
+  {
+    warmTape.slice(-16).forEach(([t, d]) => toTape({ ...t, ts: -t.ts }, d));
+    tapeEl.querySelectorAll(".in").forEach((li) => li.classList.remove("in"));
+    warmTape.length = 0;
+  }
 
   // ------------------------------------------------------------------ views
   const feedEl = $("#sentinel-feed");
@@ -572,16 +793,23 @@ const Sentinel = (() => {
     $("#s-scored").textContent = int(stats.scored);
     $("#s-flagged").textContent = int(stats.flagged);
     $("#s-blocked").textContent = int(stats.blocked);
+    $("#tape-scored").textContent = int(stats.scored);
+    $("#tape-declined").textContent = int(stats.blocked);
     $("#sentinel-filter").textContent = filter ? REGIONS[filter].label + " only" : "all regions";
     const rows = alerts.filter(inFilter).slice(0, 14);
     if (!rows.length) { feedEl.innerHTML = `<li class="row"><span></span><span class="muted">No alerts in this region yet. Say “simulate an account takeover” to create one.</span></li>`; return; }
-    feedEl.innerHTML = rows.map((a, i) => `<li class="row click${a.fresh && i < 3 && performance.now() - a.born < 1500 ? " new" : ""}" data-uid="${a.uid}" tabindex="0">
-      <span class="badge ${a.decision === "BLOCK" ? "b-block" : "b-review"}">${a.decision}</span>
-      <span>${money(a.amount)} · ${esc(a.city.name)}, ${a.city.country}</span>
-      <span class="mono muted">${clock(a.ts)}</span>
-      <span class="sub">${esc(a.uid)} · ${esc(a.reasons.map((r) => NICE[r.code]).join(", "))}</span></li>`).join("");
+    feedEl.innerHTML = rows.map((a, i) => `<li class="row${a.id === selectedId ? " sel" : ""}${a.fresh && i < 3 && performance.now() - a.born < 1500 ? " new" : ""}" data-id="${a.id}" tabindex="0">
+      <span class="amt">${money(a.amount)}</span><span class="tm">${clock(a.ts)}</span>
+      <span class="sub"><span class="badge ${a.decision === "BLOCK" ? "b-block" : "b-review"}">${a.decision === "BLOCK" ? "Declined" : "On hold"}</span>${esc(a.city.name)}, ${a.city.country}</span>
+      <span class="sub">${esc(cap(a.reasons.map((r) => NICE[r.code]).join(", ")))}</span></li>`).join("");
   }
-  feedEl.addEventListener("click", (e) => { const li = e.target.closest("[data-uid]"); if (li && runner) { runner.input.value = `Why was ${li.dataset.uid} blocked?`; runner.run(runner.input.value); } });
+  feedEl.addEventListener("click", (e) => {
+    const li = e.target.closest("[data-id]"), a = li && alerts.find((x) => x.id === li.dataset.id);
+    if (!a || !runner) return;
+    runner.input.value = `Why was ${a.uid} blocked?`;
+    focus(a.city.lon, a.city.lat);
+    runner.show(runner.input.value, { html: explain(a), meta: "explanation built from the decision's own features" }, 0);
+  });
   feedEl.addEventListener("keydown", (e) => { if (e.key === "Enter") e.target.click(); });
 
   // ------------------------------------------------------------------ globe
@@ -722,15 +950,19 @@ const Sentinel = (() => {
 
   // ------------------------------------------------------------------ commands
   function explain(a) {
-    const cat = a.cat === "gift cards" ? "gift card" : a.cat, art = /^[aeiou]/.test(cat) ? "an" : "a";
-    const head = `<p><b>${a.decision === "BLOCK" ? "Blocked" : "Sent for review"}:</b> ${money(a.amount)} at ${art} ${esc(cat)} merchant in ${esc(a.city.name)}, ${a.city.country}. Cardholder ${esc(a.uid)}, who usually spends about ${money(a.usual)}.</p>`;
-    const why = `<ul>${a.reasons.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`;
-    const next = a.decision === "BLOCK"
-      ? `<div class="quote">Text to the customer: “We blocked a ${money(a.amount)} charge in ${esc(a.city.name)}. Reply YES if this was you, or NO and we'll freeze the card.”</div>`
-      : `<p>Next step: an analyst checks it within 15 minutes. The card keeps working in the meantime.</p>`;
-    const truth = `<p class="note">Simulator ground truth: ${a.label ? "fraud (" + esc(NICE[a.label]) + ")" : "a genuine purchase, so this one is a false alarm"}.</p>`;
-    const link = `<p><a href="${customerLink(a)}" target="_blank" rel="noopener">See what the cardholder gets: where and when it happened, with “show me where” AR ↗</a></p>`;
-    return head + why + next + link + truth;
+    selectedId = a.id; feedDirty = true;
+    const shop = spot(a), block = a.decision === "BLOCK";
+    const top = `<div class="cf-top"><span class="badge ${block ? "b-block" : "b-review"}">${block ? "Declined" : "On hold"}</span><span class="cf-sub">${clock(a.ts)}, card ${esc(a.uid)}</span></div>
+      <div class="cf-amt">${money(a.amount)}</div>
+      <div class="cf-where">${esc(shop.name)}, ${a.city.country}</div>
+      <div class="cf-sub">${esc(cap(a.cat))}. This card usually spends about ${money(a.usual)}.</div>`;
+    const why = `<div class="cf-h">Why it was stopped</div><ul class="cf-why">${a.reasons.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`;
+    const next = block
+      ? `<div class="cf-h">Text sent to the cardholder</div><div class="sms">We declined a ${money(a.amount)} charge at ${esc(shop.name)}. Was this you? Reply YES, or NO and we'll freeze the card.</div>`
+      : `<div class="cf-h">Next step</div><p>An analyst reviews it within 15 minutes. The card keeps working in the meantime.</p>`;
+    const link = `<a class="cf-link" href="${customerLink(a)}" target="_blank" rel="noopener"><span><b>Open the cardholder's alert</b><span>Where and when it happened, with the AR “show me where” view</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3ZM5 5h6v2H5v12h12v-6h2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg></a>`;
+    const truth = `<p class="truth">Simulator ground truth: ${a.label ? "fraud (" + esc(NICE[a.label]) + ")" : "a genuine purchase, so this one is a false alarm"}.</p>`;
+    return top + why + next + link + truth;
   }
   function handle(text) {
     const it = NLU.sentinel(text);
@@ -784,7 +1016,15 @@ const Sentinel = (() => {
   setInterval(() => tick(true), 125);
   return {
     draw,
-    start() { runner = wireCommand("sentinel", handle); runner.input.value = "Why was the last transaction blocked?"; runner.run(runner.input.value); },
+    start() {
+      runner = wireCommand("sentinel", handle);
+      runner.input.value = "Why was the last transaction blocked?"; runner.run(runner.input.value);
+      setTimeout(() => attack("impossible_travel"), 900);
+      $("#hero-attack").addEventListener("click", () => {
+        $("#console").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+        runner.input.value = "Simulate impossible travel"; runner.run(runner.input.value);
+      });
+    },
   };
 })();
 
