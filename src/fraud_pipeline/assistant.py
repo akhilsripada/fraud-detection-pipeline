@@ -173,7 +173,8 @@ def explain(alert: dict) -> dict:
     fired = set(alert.get("rules_fired", []))
     mins = float(f.get("seconds_since_last", 0)) / 60
     if "impossible_travel" in fired:
-        reasons.append(f"{max(1, round(mins))} minutes after this card's previous purchase, it was used "
+        n = max(1, round(mins))
+        reasons.append(f"{n} minute{'' if n == 1 else 's'} after this card's previous purchase, it was used "
                        f"{f.get('km_from_last', 0):,.0f} km away. Getting there in time means travelling at "
                        f"{f.get('speed_kmh', 0):,.0f} km/h; an airliner manages about 900.")
     if "new_device_new_country" in fired:

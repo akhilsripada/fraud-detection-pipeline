@@ -26,10 +26,10 @@ It runs two ways from the same code: on your laptop with one command, or serverl
 ```bash
 git clone https://github.com/akhilsripada/fraud-detection-pipeline.git
 cd fraud-detection-pipeline
-python run.py
+python3 run.py        # on Windows: python run.py
 ```
 
-Your browser opens the live dashboard at http://localhost:8000. Type *"simulate an account takeover"* in **Ask Swipestop** and watch it get caught and explained. With Docker instead: `docker compose up`.
+Your browser opens http://localhost:8000, the same page as the live demo but connected to the real engine: the trained model, the live stream and the SQLite database. Press **Run an attack** and watch it land on the receipt tape, get declined, and get explained in the case file. Open the cardholder's alert from there. The ops metrics view (throughput, latency, live precision and recall) is at http://localhost:8000/console. With Docker instead: `docker compose up`.
 
 ## Talk to it
 
@@ -38,7 +38,7 @@ Your browser opens the live dashboard at http://localhost:8000. Type *"simulate 
 | **Dashboard** | Type a question in **Ask Swipestop**, or click any alert to ask why it was flagged. |
 | **Claude, ChatGPT, Cursor** | Add the MCP server (below), then ask *"what fraud happened in Europe today?"* |
 | **HTTP API** | `curl -X POST localhost:8000/api/ask -d '{"text":"give me a summary"}'` |
-| **AR** | Open `/ar` on an Android phone with Chrome, tap **Start AR**, and place the globe on a table. Run `python run.py --host 0.0.0.0` so your phone can reach your laptop. iPhone Safari doesn't support WebXR AR yet, so it shows the 3D globe instead. |
+| **AR** | Open `/ar` on an Android phone with Chrome, tap **Start AR**, and place the globe on a table. Run `python3 run.py --host 0.0.0.0` so your phone can reach your laptop. iPhone Safari doesn't support WebXR AR yet, so it shows the 3D globe instead. |
 
 Questions it understands: *why was u01037 blocked?* · *why was the last transaction blocked?* · *simulate impossible travel* · *show me fraud in Asia* · *give me a summary* · *show all*. Set `GEMINI_API_KEY` (Google's free tier works) to also handle free-form questions like *"anything weird happening in the far east?"*.
 
@@ -70,7 +70,7 @@ curl -X POST localhost:8000/api/cards/<user_id>/unfreeze
 ```
 
 **Push to your phone (free):** install the [ntfy](https://ntfy.sh) app, subscribe to a topic name only you know, then run
-`python run.py --host 0.0.0.0 --notify your-topic --public-url http://<laptop-ip>:8000`.
+`python3 run.py --host 0.0.0.0 --notify your-topic --public-url http://<laptop-ip>:8000`.
 Each blocked purchase sends *"$812.40 in London, GB was blocked on your card. Was this you?"*, and tapping it opens the alert. Pushes are limited to one every 20 seconds.
 
 > Phone browsers only allow the camera and compass on HTTPS pages, so for the AR view on a phone use the live demo, which is served over HTTPS. On the laptop itself, `localhost` works.
@@ -191,11 +191,11 @@ src/fraud_pipeline/      # deployed to Lambda as-is (no third-party deps)
 ml/train.py              # simulate -> featurize -> train -> verify export -> report
 run.py                   # one-command start: server + dashboard + browser
 local/demo_server.py     # pipeline, dashboard, assistant and HTTP API, standard library only
-dashboard/index.html     # live dashboard with Ask Swipestop (SSE locally, WebSocket on AWS)
+dashboard/index.html     # ops metrics console at /console (SSE locally, WebSocket on AWS)
 dashboard/customer.html  # cardholder alert: "was this you?", map, camera + compass "show me where"
 mcp/swipestop_mcp.py      # MCP server so AI assistants can query the live stream
 ar/index.html            # three.js globe with WebXR placement on real surfaces
-site/index.html          # browser-only demo published to GitHub Pages
+site/index.html          # product page: live data at localhost:8000, in-browser simulation on GitHub Pages
 infra/                   # AWS CDK app (Python)
 scripts/producer.py      # stream simulated traffic into Kinesis
 scripts/replay_dlq.py    # re-drive failed records from the DLQ
@@ -211,7 +211,7 @@ docs/                    # Athena queries
 Requires Python 3.11+. The pipeline itself uses only the standard library.
 
 ```bash
-python run.py                        # http://localhost:8000
+python3 run.py                       # http://localhost:8000
 python -m unittest discover -s tests # 65 tests, a few seconds
 python loadtest/bench.py             # benchmark
 ```

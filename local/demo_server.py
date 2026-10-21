@@ -1,7 +1,8 @@
 """Run Swipestop on your laptop: live pipeline, dashboard, assistant and API. No AWS needed.
 
     python run.py                          # easiest: starts this and opens the browser
-    python local/demo_server.py            # then open http://localhost:8000
+    python local/demo_server.py            # then open http://localhost:8000 (product page, live)
+                                           # http://localhost:8000/console is the ops metrics view
     python local/demo_server.py --tps 200 --port 8080
 
 HTTP API (used by the dashboard and by the MCP server in mcp/):
@@ -40,7 +41,7 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from fraud_pipeline.assistant import Assistant, GeminiRouter  # noqa: E402
+from fraud_pipeline.assistant import Assistant, GeminiRouter, explain  # noqa: E402
 from fraud_pipeline.customer import CustomerDesk, PushNotifier, merchant  # noqa: E402
 from fraud_pipeline.pipeline import ALLOW, BLOCK, FraudScorer, Pipeline  # noqa: E402
 from fraud_pipeline.simulator import ATTACKS, TransactionSimulator  # noqa: E402
@@ -48,7 +49,8 @@ from fraud_pipeline.sinks import InMemoryAlertSink, alert_payload  # noqa: E402
 from fraud_pipeline.state import InMemoryStateStore  # noqa: E402
 from fraud_pipeline.store import AlertStore  # noqa: E402
 
-DASHBOARD = ROOT / "dashboard" / "index.html"
+HOME = ROOT / "site" / "index.html"            # product page; switches to live data when served from here
+DASHBOARD = ROOT / "dashboard" / "index.html"   # ops metrics console
 CUSTOMER = ROOT / "dashboard" / "customer.html"
 
 
@@ -98,6 +100,7 @@ class Engine(threading.Thread):
         self.window: deque = deque()  # (wall_ts, latency_ms, decision, label)
         self.totals = {"processed": 0, "flagged": 0, "blocked": 0, "tp": 0, "fp": 0, "fn": 0}
         self.ready = False
+        self._last_tape = 0.0
 
     def run(self):
         # 1) build user history fast on the simulated clock (not shown on the dashboard)
@@ -140,9 +143,17 @@ class Engine(threading.Thread):
         p["processed"] += 1
         p["flagged"] += flagged
         p["blocked"] += d.decision == BLOCK
+        if not flagged and now - self._last_tape >= 0.45:   # a sample of approved swipes for the receipt tape
+            self._last_tape = now
+            self.hub.publish({"type": "txn", "ts": d.ts, "amount": d.amount, "city": d.city, "country": d.country,
+                              "lat": d.lat, "lon": d.lon, "user_id": d.user_id,
+                              "merchant_category": d.merchant_category, "decision": d.decision})
         if flagged:
             msg = {**alert_payload(d), "features": d.features,
                    "merchant": merchant(txn.get("merchant_id", ""), d.merchant_category, d.city)}
+            ratio = float(d.features.get("amount_ratio") or 1)
+            msg["usual"] = round(d.amount / ratio, 2) if ratio > 0 else d.amount
+            msg["why"] = explain(msg)["reasons"]
             self.store.save(msg)
             self.recent_alerts.append(msg)
             self.hub.publish(msg)
@@ -217,6 +228,8 @@ def make_handler(engine: Engine, hub: Hub, assistant: Assistant):
         def do_GET(self):
             path = urlparse(self.path).path
             if path in ("/", "/index.html"):
+                return self._send(200, HOME.read_bytes(), "text/html; charset=utf-8")
+            if path in ("/console", "/console/"):
                 return self._send(200, DASHBOARD.read_bytes(), "text/html; charset=utf-8")
             if path == "/api/summary":
                 return self._send(200, json.dumps({"ready": engine.ready, **engine.snapshot(),

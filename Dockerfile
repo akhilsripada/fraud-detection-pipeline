@@ -3,6 +3,7 @@ WORKDIR /app
 COPY src ./src
 COPY local ./local
 COPY dashboard ./dashboard
+COPY site ./site
 COPY ar ./ar
 COPY mcp ./mcp
 COPY run.py ./

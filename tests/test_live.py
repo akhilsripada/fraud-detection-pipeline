@@ -86,9 +86,27 @@ class LiveServerTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 400)
 
     def test_dashboard_and_ar_pages(self):
-        for path in ("/", "/ar"):
+        for path, marker in (("/", b"Stop fraud before"), ("/console", b"Ask Swipestop"), ("/ar", b"<html")):
             with urllib.request.urlopen(self.base + path, timeout=5) as r:
-                self.assertIn(b"<html", r.read())
+                self.assertIn(marker, r.read(), path)
+
+    def test_alerts_carry_their_explanation_and_tape_samples_stream(self):
+        alert = self.engine.list_alerts(1)[0]
+        self.assertTrue(alert["why"])                          # the case file renders the engine's own reasons
+        self.assertGreater(alert["usual"], 0)
+        summary = self.get("/api/summary")
+        self.assertIsInstance(summary["recent"], list)
+        q = self.engine.hub.subscribe()
+        try:
+            deadline, kinds = time.time() + 5, set()
+            while time.time() < deadline and "txn" not in kinds:
+                try:
+                    kinds.add(json.loads(q.get(timeout=1))["type"])
+                except Exception:
+                    pass
+            self.assertIn("txn", kinds)
+        finally:
+            self.engine.hub.unsubscribe(q)
 
     def test_keep_alive_connection_survives_a_post_with_a_body(self):
         import http.client

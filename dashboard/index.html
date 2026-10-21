@@ -41,8 +41,8 @@
   .kpi { padding: 12px 14px; }
   .kpi .label { color: var(--muted); font-size: 12px; }
   .kpi .value { font-size: 24px; font-weight: 600; letter-spacing: -0.02em;
-                font-variant-numeric: tabular-nums; margin-top: 2px; }
-  .kpi .sub { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+                 margin-top: 2px; }
+  .kpi .sub { color: var(--muted); font-size: 12px;  }
   .row { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
   .panel { padding: 12px 14px; min-width: 0; }
   .panel h2 { font-size: 13px; margin: 0 0 8px; font-weight: 600; display: flex;
@@ -57,7 +57,7 @@
   button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 7px; cursor: pointer;
            border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
   button:hover { border-color: var(--accent); color: var(--accent); }
-  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse;  }
   th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px;
        padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -107,6 +107,7 @@
   <span id="conn" class="pill"><span class="dot"></span><span id="connText">connecting</span></span>
   <span id="mode" class="pill"></span>
   <span class="spacer"></span>
+  <a href="/" style="color:var(--muted);font-size:13px;text-decoration:none;margin-right:12px">← Back to the product page</a>
   <span class="mono" id="modelVersion" style="color:var(--muted)"></span>
 </header>
 

@@ -36,12 +36,12 @@
   .REVIEW { color: var(--review); background: var(--review-bg); }
   .ALLOW, .mine { color: var(--ok); background: var(--ok-bg); }
   h1 { font-size: 22px; font-weight: 700; margin: 10px 0 2px; letter-spacing: -0.02em; }
-  .amount { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin: 6px 0 0; }
+  .amount { font-size: 40px; font-weight: 800; letter-spacing: -0.03em;  margin: 6px 0 0; }
   .merchant { font-size: 16px; font-weight: 600; }
   .muted { color: var(--muted); }
   .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin-top: 14px; font-size: 14px; }
   .facts dt { color: var(--muted); }
-  .facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .facts dd { margin: 0;  }
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
   button { font: inherit; font-weight: 600; padding: 12px 14px; border-radius: 10px; cursor: pointer; border: 1px solid var(--line);
     background: var(--panel); color: var(--ink); }
@@ -57,7 +57,7 @@
   .tl li:first-child { border-top: 0; }
   .tl .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); margin-top: 5px; }
   .tl .this .dot { background: var(--block); box-shadow: 0 0 0 4px var(--block-bg); }
-  .tl .amt { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  .tl .amt {  font-weight: 600; text-align: right; }
   .tl .sub { grid-column: 2 / 4; font-size: 13px; color: var(--muted); }
   .gap { grid-column: 2 / 4; font-size: 12px; color: var(--muted); }
   .gap.bad { color: var(--block); font-weight: 600; }
@@ -86,7 +86,7 @@
   #pin .label { background: #fff; color: #111; border-radius: 12px; padding: 8px 12px; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.4);
     min-width: 170px; }
   #pin .label b { display: block; font-size: 15px; }
-  #pin .label span { display: block; font-size: 12px; color: #555; font-variant-numeric: tabular-nums; }
+  #pin .label span { display: block; font-size: 12px; color: #555;  }
   #pin .label .km { font-size: 18px; font-weight: 700; color: #c62f2f; }
   #pin svg { margin-top: -2px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
   #pin.pulse svg circle.ring { animation: ring 1.6s ease-out infinite; transform-origin: 20px 20px; }
@@ -99,7 +99,7 @@
   .strip .tick { position: absolute; top: 9px; transform: translateX(-50%); color: rgba(255,255,255,.8); }
   .strip .tick.target { color: #ff8c8c; }
   .strip .center { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #fff; transform: translateX(-1px); }
-  .readout { display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
+  .readout { display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px;  text-shadow: 0 1px 2px #000; }
   #radar { position: absolute; right: 14px; top: calc(64px + env(safe-area-inset-top)); width: 104px; height: 104px; }
 </style>
 </head>

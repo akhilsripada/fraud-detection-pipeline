@@ -71,6 +71,9 @@
   .nav .by img { width: 28px; height: 28px; border-radius: 50%; background: var(--soft); }
   .nav .by span b { font-weight: 600; }
 
+  .live-only { display: none; }
+  body.live .live-only { display: revert; }
+
   /* ---------------------------------------------------------------- hero */
   .hero { padding: 64px 0 40px; }
   .hero .wrap { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 56px; align-items: center; }
@@ -86,7 +89,7 @@
   .proof { display: grid; grid-template-columns: repeat(3, auto); gap: 8px 36px; justify-content: start; margin: 0; }
   .proof div { display: grid; gap: 2px; }
   .proof dt { font-size: 13.5px; color: var(--muted); order: 2; }
-  .proof dd { margin: 0; font: 700 26px/1.1 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; order: 1; }
+  .proof dd { margin: 0; font: 700 26px/1.1 var(--display); letter-spacing: -.02em;  order: 1; }
 
   /* the receipt tape: the one loud thing on the page */
   .tape-wrap { position: relative; justify-self: end; width: min(100%, 410px); }
@@ -144,11 +147,11 @@
 
   .counts { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 16px 12px; gap: 8px; border-bottom: 1px solid var(--line); }
   .counts div { display: grid; }
-  .counts b { font: 700 20px/1.2 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .counts b { font: 700 20px/1.2 var(--display);  letter-spacing: -.01em; }
   .counts span { font-size: 12.5px; color: var(--muted); }
   .counts .c-bad b { color: var(--bad); }
   .list { list-style: none; margin: 0; padding: 6px; overflow: auto; flex: 1; max-height: 470px; }
-  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer;  }
   .row:hover, .row:focus-visible { background: var(--soft); }
   .row.sel { background: var(--soft); box-shadow: inset 3px 0 0 var(--navy); }
   .row .amt { font-weight: 600; }
@@ -177,7 +180,7 @@
   .reply .ans ul { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }
   .reply .meta { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
   .cf-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .cf-amt { font: 800 38px/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin: 8px 0 4px; }
+  .cf-amt { font: 800 38px/1 var(--display); letter-spacing: -.03em;  margin: 8px 0 4px; }
   .cf-where { font-weight: 600; }
   .cf-sub { color: var(--muted); font-size: 14px; }
   .cf-h { font: 600 13.5px var(--display); margin: 14px 0 6px; color: var(--muted); }
@@ -203,12 +206,12 @@
   .steps li:last-child::after { display: none; }
   .steps h3 { font: 600 17px/1.25 var(--display); margin: 0 0 6px; }
   .steps p { margin: 0; color: var(--muted); font-size: 14.5px; }
-  .steps .ms { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .steps .ms { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--ink);  }
 
   /* ---------------------------------------------------------------- results + stack */
   .results { padding: 64px 0; border-top: 1px solid var(--line); }
   .grid2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 56px; align-items: start; }
-  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse;  }
   th, td { text-align: left; padding: 13px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { font-weight: 500; color: var(--muted); width: 38%; padding-right: 18px; }
   td b { font: 700 19px var(--display); letter-spacing: -.01em; display: block; }
@@ -272,6 +275,7 @@
       <a href="#console">Live console</a>
       <a href="#how">How it works</a>
       <a href="#results">Results</a>
+      <a href="/console" class="live-only">Ops metrics</a>
       <a href="https://github.com/akhilsripada/fraud-detection-pipeline">Source</a>
     </nav>
     <a class="by" href="https://github.com/akhilsripada" title="Akhil Sripada on GitHub">
@@ -311,7 +315,7 @@
     <div class="wrap">
       <div class="sec-head">
         <h2>The analyst console</h2>
-        <p>Simulated cardholders, running live in your browser. Ask in plain English, launch an attack, or pick any alert to open its case.</p>
+        <p id="console-note">Simulated cardholders, running live in your browser. Ask in plain English, launch an attack, or pick any alert to open its case.</p>
       </div>
       <div class="console">
         <div class="cmd">
@@ -398,7 +402,7 @@
         <div class="run">
           <p>Run the full system locally in one command:</p>
           <pre>git clone https://github.com/akhilsripada/fraud-detection-pipeline
-cd fraud-detection-pipeline && python run.py</pre>
+cd fraud-detection-pipeline && python3 run.py</pre>
         </div>
       </div>
     </div>
@@ -624,7 +628,9 @@ const Swipestop = (() => {
     northamerica: { label: "North America", codes: ["US", "CA", "MX"], lon: -95, lat: 36 },
   };
   const KINDS = ["card_testing", "impossible_travel", "amount_spike", "account_takeover"];
-  const NICE = { card_testing: "card testing", impossible_travel: "impossible travel", amount_spike: "amount spike",
+  const NICE = { high_velocity_1m: "many charges in a minute", risky_category_high_amount: "large purchase in a risky category",
+    card_frozen: "card frozen by the cardholder", model: "model score",
+    card_testing: "card testing", impossible_travel: "impossible travel", amount_spike: "amount spike",
     account_takeover: "account takeover", new_device_new_country: "new device in a new country", new_device: "new device" };
   const CATS = ["grocery", "restaurant", "gas", "pharmacy", "retail", "coffee"];
   const RANK = { ALLOW: 0, REVIEW: 1, BLOCK: 2 };
@@ -670,7 +676,7 @@ const Swipestop = (() => {
     let decision = "ALLOW";
     const up = (d) => { if (RANK[d] > RANK[decision]) decision = d; };
     if (prev && km > 500 && speed > 900) {
-      reasons.push({ code: "impossible_travel", text: `${Math.max(1, Math.round(mins))} minutes earlier this card was used in ${prev.city.name}, ${int(km)} km away. Getting here in time means travelling at ${int(speed)} km/h, and an airliner manages about 900.` });
+      reasons.push({ code: "impossible_travel", text: `${Math.max(1, Math.round(mins))} minute${Math.max(1, Math.round(mins)) === 1 ? "" : "s"} earlier this card was used in ${prev.city.name}, ${int(km)} km away. Getting here in time means travelling at ${int(speed)} km/h, and an airliner manages about 900.` });
       up("BLOCK");
     }
     if (newDev && newCountry) {
@@ -951,16 +957,16 @@ const Swipestop = (() => {
   // ------------------------------------------------------------------ commands
   function explain(a) {
     selectedId = a.id; feedDirty = true;
-    const shop = spot(a), block = a.decision === "BLOCK";
+    const shop = a.live ? { name: a.merchant } : spot(a), block = a.decision === "BLOCK";
     const top = `<div class="cf-top"><span class="badge ${block ? "b-block" : "b-review"}">${block ? "Declined" : "On hold"}</span><span class="cf-sub">${clock(a.ts)}, card ${esc(a.uid)}</span></div>
       <div class="cf-amt">${money(a.amount)}</div>
       <div class="cf-where">${esc(shop.name)}, ${a.city.country}</div>
       <div class="cf-sub">${esc(cap(a.cat))}. This card usually spends about ${money(a.usual)}.</div>`;
-    const why = `<div class="cf-h">Why it was stopped</div><ul class="cf-why">${a.reasons.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`;
+    const why = `<div class="cf-h">Why it was stopped</div><ul class="cf-why">${(a.live ? a.why : a.reasons.map((r) => r.text)).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`;
     const next = block
       ? `<div class="cf-h">Text sent to the cardholder</div><div class="sms">We declined a ${money(a.amount)} charge at ${esc(shop.name)}. Was this you? Reply YES, or NO and we'll freeze the card.</div>`
       : `<div class="cf-h">Next step</div><p>An analyst reviews it within 15 minutes. The card keeps working in the meantime.</p>`;
-    const link = `<a class="cf-link" href="${customerLink(a)}" target="_blank" rel="noopener"><span><b>Open the cardholder's alert</b><span>Where and when it happened, with the AR “show me where” view</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3ZM5 5h6v2H5v12h12v-6h2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg></a>`;
+    const link = `<a class="cf-link" href="${a.live ? "/customer/" + encodeURIComponent(a.id) : customerLink(a)}" target="_blank" rel="noopener"><span><b>Open the cardholder's alert</b><span>Where and when it happened, with the AR “show me where” view</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3ZM5 5h6v2H5v12h12v-6h2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg></a>`;
     const truth = `<p class="truth">Simulator ground truth: ${a.label ? "fraud (" + esc(NICE[a.label]) + ")" : "a genuine purchase, so this one is a false alarm"}.</p>`;
     return top + why + next + link + truth;
   }
@@ -974,6 +980,15 @@ const Swipestop = (() => {
       }
       focus(a.city.lon, a.city.lat);
       return { html: explain(a), meta: "explanation built from the decision's own features" };
+    }
+    if (it.intent === "attack" && LIVE) {
+      const kind = it.kind || pick(KINDS);
+      liveAttack(kind).then((user) => {
+        if (!user) { runner.show("", { html: "<p>The engine didn't take the attack. Try again in a moment.</p>" }); return; }
+        pendingUser = user;
+        runner.show("", { html: `<p>Launched ${esc(NICE[kind])} against cardholder ${esc(user)} in the live stream. Watch the tape, the globe and the queue.</p>`, meta: "sent to the Swipestop engine" });
+      });
+      return { html: `<p>Sending ${esc(NICE[kind])} into the live stream…</p>` };
     }
     if (it.intent === "attack") {
       const launched = attack(it.kind);
@@ -1013,16 +1028,95 @@ const Swipestop = (() => {
   }
   function focus(lon, lat) { targetRot = lon; targetTilt = Math.max(-30, Math.min(40, lat)); holdUntil = performance.now() + 9000; }
 
-  setInterval(() => tick(true), 125);
+  // ------------------------------------------------------------------ live mode
+  // Served by the Swipestop engine (python run.py)? Then nothing on this page is simulated in the browser:
+  // alerts and their explanations come from the trained model over Server-Sent Events, attacks go into
+  // the real stream, and each case links to the real cardholder page. On GitHub Pages /api/summary
+  // doesn't exist, so the page keeps its built-in simulation.
+  let LIVE = false, pendingUser = null;
+  const lastSeen = new Map();
+  function fromServer(m) {
+    const codes = (m.rules_fired || []).length ? m.rules_fired : ["model"];
+    return { id: m.txn_id, uid: m.user_id, ts: m.ts, amount: m.amount, cat: String(m.merchant_category || "").replace(/_/g, " "),
+      city: { name: m.city, country: m.country, lat: +m.lat, lon: +m.lon }, decision: m.decision,
+      reasons: codes.map((code) => ({ code, text: "" })), why: m.why || [], merchant: m.merchant || m.city,
+      usual: m.usual ?? m.amount, label: m.label === 1 ? (m.fraud_type || "fraud") : null, live: true };
+  }
+  function addLive(m, fresh) {
+    if (alerts.some((x) => x.id === m.txn_id)) return;
+    const a = { ...fromServer(m), born: fresh ? performance.now() : -1e9, fresh };
+    const prev = lastSeen.get(a.uid);
+    lastSeen.set(a.uid, a.city);
+    alerts.unshift(a);
+    if (alerts.length > 80) alerts.length = 80;
+    const travel = a.reasons.some((r) => r.code === "impossible_travel" || r.code === "new_device_new_country");
+    arcs.push({ from: travel && prev && hav(prev.lat, prev.lon, a.city.lat, a.city.lon) > 300 ? prev : null, to: a.city,
+      decision: a.decision, born: fresh ? performance.now() : performance.now() - 15000 });
+    if (arcs.length > 30) arcs.shift();
+    if (fresh) toTape({ ts: a.ts, cat: a.cat, city: a.city, amount: a.amount }, { decision: a.decision, reasons: a.reasons });
+    feedDirty = true;
+    if (fresh && pendingUser && a.uid === pendingUser) {
+      pendingUser = null; focus(a.city.lon, a.city.lat);
+      setTimeout(() => runner.show("", { html: `<p><b>Caught.</b> The model stopped it on ${esc(a.uid)}.</p>` + explain(a), meta: "scored by the trained model" }), 400);
+    }
+  }
+  function setStats(m) {
+    if (m.processed == null) return;
+    stats.scored = m.processed; stats.flagged = m.flagged; stats.blocked = m.blocked;
+    $("#tape-scored").textContent = int(stats.scored); $("#tape-declined").textContent = int(stats.blocked);
+    feedDirty = true;
+  }
+  async function liveAttack(kind) {
+    try {
+      const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "simulate " + kind.replace(/_/g, " ") }) });
+      const out = await r.json();
+      return out.attack && out.attack.user;
+    } catch { return null; }
+  }
+  async function goLive() {
+    let summary;
+    try {
+      const ctl = new AbortController();
+      setTimeout(() => ctl.abort(), 1500);
+      const r = await fetch("/api/summary", { cache: "no-store", signal: ctl.signal });
+      if (!r.ok) return false;
+      summary = await r.json();
+      if (!Array.isArray(summary.recent)) return false;
+    } catch { return false; }
+    LIVE = true;
+    clearInterval(simTimer);
+    alerts.length = 0; arcs.length = 0; queue.length = 0; tapeEl.innerHTML = "";
+    setStats(summary);
+    summary.recent.forEach((m) => addLive(m, false));
+    const es = new EventSource("/events");
+    es.onmessage = (e) => {
+      let m;
+      try { m = JSON.parse(e.data); } catch { return; }
+      if (m.type === "alert") addLive(m, Date.now() / 1000 - m.ts < 20);
+      else if (m.type === "stats") setStats(m);
+      else if (m.type === "txn") {
+        lastSeen.set(m.user_id, { name: m.city, country: m.country, lat: +m.lat, lon: +m.lon });
+        toTape({ ts: m.ts, cat: String(m.merchant_category).replace(/_/g, " "), city: { name: m.city }, amount: m.amount }, { decision: "ALLOW", reasons: [] });
+      }
+    };
+    document.body.classList.add("live");
+    $("#console-note").textContent = "Connected to the Swipestop engine on this machine: the trained model, the live stream and the database. Ask in plain English, launch an attack, or pick any alert to open its case.";
+    return true;
+  }
+
+  const simTimer = setInterval(() => tick(true), 125);
   return {
     draw,
     start() {
       runner = wireCommand("swipestop", handle);
-      runner.input.value = "Why was the last transaction blocked?"; runner.run(runner.input.value);
-      setTimeout(() => attack("impossible_travel"), 900);
       $("#hero-attack").addEventListener("click", () => {
         $("#console").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
         runner.input.value = "Simulate impossible travel"; runner.run(runner.input.value);
+      });
+      goLive().then((live) => {
+        runner.input.value = "Why was the last transaction blocked?"; runner.run(runner.input.value);
+        if (!live) setTimeout(() => attack("impossible_travel"), 900);
       });
     },
   };
